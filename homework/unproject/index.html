@@ -1,0 +1,181 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="resources/codemirror.css"></link>
+    <link rel="stylesheet" href="resources/common.css"></link>
+    <link rel="stylesheet" href="resources/tests.css"></link>
+    <link rel="stylesheet" href="resources/playground.css"></link>
+
+    <script src="resources/jquery-2.1.1.min.js"></script>
+    <script src="resources/codemirror.js"></script>
+    <script src="resources/beautify.js"></script>
+
+    <script src="resources/IndentingOutputStream.js"></script>
+    <script src="resources/helpers.js"></script>
+    <script src="resources/playground.js"></script>
+    <script src="resources/tests.js"></script>
+
+    <script type="text/ohm-js" namespace="ppls">
+
+C {
+  Exprs
+    = SeqExpr
+
+  Expr
+    = SetExpr
+
+  SeqExpr
+    = SetExpr SeqExpr  -- seq
+    | SetExpr
+
+  SetExpr
+    = ident '=' SetExpr  -- set
+    | AddExpr
+
+  AddExpr
+    = AddExpr '+' MulExpr  -- plus
+    | AddExpr '-' MulExpr  -- minus
+    | MulExpr
+
+  MulExpr
+    = MulExpr '*' ExpExpr  -- times
+    | MulExpr '/' ExpExpr  -- divide
+    | ExpExpr
+
+  ExpExpr
+    = ExpExpr '^' PriExpr  -- exp
+    | PriExpr
+
+  PriExpr
+    = '(' Expr ')'  -- paren
+    | number
+    | ident
+
+  // Lexical rules
+
+  number  -- number
+    = '-'? digit+ ('.' digit+)?  -- wholeAndFrac
+    | '-'? '.' digit+            -- onlyFrac
+
+  ident  -- identifier
+    = letter alnum*
+
+  tokens = (number | ident | _)*
+}
+
+    </script>
+    <script src="resources/ohm.min.js"></script>
+
+    <script src="C.js"></script>
+    <script src="prettyPrint.js"></script>
+  </head>
+  <body>
+    <everything>
+      <header>
+        <descr>A Calculator Language</descr>
+      </header>
+      <abstract>
+        This is a warm-up exercise to get you used to the mechanics of programming in JavaScript.
+        It's also a good way to prepare for the first two homework assignments, which will have a very similar 
+        structure.
+      </abstract>
+      <section>
+        <sectionHeader>
+          <span>Language Definition</span>
+        </sectionHeader>
+        <p>
+          Here's what the concrete syntax of the calculator language looks like, and how we'll represent it as
+          abstract syntax in JavaScript:
+        </p>
+        <p>
+          <table class="syntax">
+            <tr>
+              <th></th>
+              <th>Concrete Syntax</th>
+              <th>JS AST</th>
+            </tr>
+            <tr>
+              <td>e ::=</td>
+              <td>
+                <multival>
+                  <div>number</div>
+                  <div>e<sub>1</sub> <code>+</code> e<sub>2</sub></div>
+                  <div>e<sub>1</sub> <code>-</code> e<sub>2</sub></div>
+                  <div>e<sub>1</sub> <code>*</code> e<sub>2</sub></div>
+                  <div>e<sub>1</sub> <code>/</code> e<sub>2</sub></div>
+                  <div>e<sub>1</sub> <code>^</code> e<sub>2</sub></div>
+                  <div style="margin-top: 12pt;">e<sub>1</sub> e<sub>2</sub></div>
+                  <div>x</div>
+                  <div>x <code>=</code> e</div>
+                </multival>
+              </td>
+              <td>
+                <div>number</div>
+                <div><code>['+',</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>]</code></div>
+                <div><code>['-',</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>]</code></div>
+                <div><code>['*',</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>]</code></div>
+                <div><code>['/',</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>]</code></div>
+                <div><code>['^',</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>]</code></div>
+                <div style="margin-top: 12pt;">
+                  <sideBar>Sequencing: evaluate e<sub>1</sub>, then e<sub>2</sub>.
+                  </sideBar>
+                  <code>['seq',</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>]</code>
+                </div>
+                <div>
+                  <sideBar>An undeclared variable should evaluate to <code>0</code>.</sideBar>
+                  <code>['id',</code> x<code>]</code>
+                </div>
+                <div><code>['set', </code>x<code>, </code>e<code>]</code></div>
+              </td>
+            </tr>
+          </table>
+        </p>
+        <p>
+          You'll be implementing an interpreter for this language, in abstract syntax form.
+          But writing programs in abstract syntax gets old real fast, so to make your interpreter more convenient to
+          use, we'll provide a parser.*
+          <sidebar>
+            * Parsing is not the focus of this class, but for those of you who are interested: our parser is generated
+            from the <i>Ohm</i> grammar in <a id="pageSourceAnchor">this page</a>; the set of semantic actions that
+            produce ASTs is <a href="C.js">here</a>.
+          </sidebar>
+          <script>
+
+pageSourceAnchor.setAttribute('href', 'view-source:' + window.location.href);
+
+          </script>
+        </p>
+        <p>
+          The parser for this assignment is accessible via an object that
+          is stored in the global variable <conc>C</conc>, which is declared in <a href="C.js">this file</a>.
+          Once you write the evaluator, you can hook it up to our stuff by writing the following statement:
+          <codeBlock>C.evalAST = function(ast) {
+  // <text>pass </text>ast<text> to your evaluator and return the result</text>
+};</codeBlock>
+          To make things easy, we've included a file called <a href="evalAST.js">evalAST.js</a> where you can
+          do your work. And here are some unit tests for your implementation. They'll run automatically every
+          time you refresh the page.
+        </p>
+        <script src="evalAST.js"></script>
+        <script src="tests.js"></script>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Playground</span>
+        </sectionHeader>
+        <style>
+
+.number {
+  color: slateblue;
+}
+
+        </style>
+        <script>
+
+insertPlayground(C, '6 * 7');
+
+        </script>
+      </section>
+    </everything>
+  </body>
+</html>
+

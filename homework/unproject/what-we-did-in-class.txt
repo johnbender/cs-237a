@@ -1,0 +1,48 @@
+C.evalAST = function(ast) {
+  return ev(ast);
+};
+
+function ev(ast) {
+  if (typeof ast === "number") {
+    return ast;
+  } else {
+    var tag = ast[0];
+    var args = ast.slice(1);
+    return impls[tag].apply(undefined, args);
+  }
+}
+
+var impls = {
+  "+": function(x, y) {
+    return ev(x) + ev(y);
+  },
+  "-": function(x, y) {
+    return ev(x) - ev(y);
+  },
+  "*": function(x, y) {
+    return ev(x) * ev(y);
+  },
+  "/": function(x, y) {
+    return ev(x) / ev(y);
+  }
+};
+
+
+/*
+function ev(ast) {
+  if (typeof ast === "number") {
+    return ast;
+  } else {
+    var tag = ast[0];
+    switch (tag) {
+      case "+":
+        var x = ast[1];
+        var y = ast[2];
+        return ev(x) + ev(y);
+      default:
+        throw new Error("unsupported");
+    }
+  }
+}
+*/
+
