@@ -1,0 +1,502 @@
+<html>
+  <head>
+    <title>HW1 and HW2: Functional Language</title>
+
+    <link rel="stylesheet" href="resources/codemirror.css"></link>
+    <link rel="stylesheet" href="resources/common.css"></link>
+    <link rel="stylesheet" href="resources/tests.css"></link>
+    <link rel="stylesheet" href="resources/playground.css"></link>
+
+    <script src="resources/jquery-2.1.1.min.js"></script>
+    <script src="resources/codemirror.js"></script>
+    <script src="resources/beautify.js"></script>
+
+    <script src="resources/IndentingOutputStream.js"></script>
+    <script src="resources/helpers.js"></script>
+    <script src="resources/playground.js"></script>
+    <script src="resources/tests.js"></script>
+
+    <script type="text/ohm-js" namespace="ppls">
+
+F {
+  Expr
+    = SeqExpr
+
+  SeqExpr
+    = NoSeqExpr ';' SeqExpr  -- seq
+    | NoSeqExpr
+
+  NoSeqExpr
+    = let ident '=' Expr in Expr         -- let
+    | fun ident* '->' Expr               -- fun
+    | if Expr then Expr else Expr        -- if
+    | match Expr with '|'? PatsAndExprs  -- match
+    | AssignExpr
+
+  PatsAndExprs
+    = PatAndExpr '|' PatsAndExprs -- cons
+    | PatAndExpr                  -- single
+
+  PatAndExpr
+    = Pat '->' Expr
+
+  Pat
+    = PriPat '::' Pat  -- cons
+    | PriPat
+
+  PriPat
+    = '[' Pats ']'  -- list
+    | '_'           -- wild
+    | ident         -- ident
+    | number        -- number
+    | nullK         -- null
+    | trueK         -- true
+    | falseK        -- false
+
+  Pats
+    = Pat ';' Pats  -- cons
+    | Pat           -- single
+    |               -- none
+
+  AssignExpr
+    = ident ':=' AssignExpr              -- set
+    | OrExpr
+
+  OrExpr
+    = OrExpr '||' AndExpr  -- or
+    | AndExpr
+
+  AndExpr
+    = AndExpr '&&' EqExpr  -- and
+    | EqExpr
+
+  EqExpr
+    = RelExpr '='  RelExpr  -- eq
+    | RelExpr '!=' RelExpr  -- neq
+    | RelExpr
+
+  RelExpr
+    = ConsExpr '<' ConsExpr  -- lt
+    | ConsExpr '>' ConsExpr  -- gt
+    | ConsExpr
+
+  ConsExpr
+    = AddExpr '::' ConsExpr  -- cons
+    | AddExpr
+
+  AddExpr
+    = AddExpr '+' MulExpr  -- plus
+    | AddExpr '-' MulExpr  -- minus
+    | MulExpr
+
+  MulExpr
+    = MulExpr '*' CallExpr  -- times
+    | MulExpr '/' CallExpr  -- divide
+    | MulExpr '%' CallExpr  -- modulus
+    | CallExpr
+
+  CallExpr
+    =  UnExpr PriExpr+  -- args
+    |  PriExpr '(' ')'  -- noArgs
+    |  UnExpr
+
+  UnExpr
+    = '+' PriExpr    -- pos
+    | '-' PriExpr    -- neg
+    | delay PriExpr  -- delay
+    | force PriExpr  -- force
+    | PriExpr
+
+  PriExpr
+    = '(' Expr ')'                                  -- paren
+    | '[' Expr '|' ident '<-' Expr (',' Expr)? ']'  -- listComp
+    | '[' NoSeqExprs ']'                            -- list
+    | ident                                         -- ident
+    | number                                        -- number
+    | nullK                                         -- null
+    | trueK                                         -- true
+    | falseK                                        -- false
+
+  NoSeqExprs
+    = NoSeqExpr ';' NoSeqExprs  -- cons
+    | NoSeqExpr                 -- single
+    |                           -- none
+
+  // Lexical rules
+
+  ident  -- identifier
+    = ~keyword letter alnum*
+
+  number  -- number
+    = digit+ ('.' digit+)?  -- wholeAndFrac
+    | '.' digit+            -- onlyFrac
+
+  fun = 'fun' ~alnum
+
+  let    = 'let' ~alnum
+  letrec = 'letrec' ~alnum
+  in     = 'in' ~alnum
+
+  if   = 'if' ~alnum
+  then = 'then' ~alnum
+  else = 'else' ~alnum
+
+  match = 'match' ~alnum
+  with  = 'with' ~alnum
+
+  nullK  = ('null' | 'nil') ~alnum
+  trueK  = 'true' ~alnum
+  falseK = 'false' ~alnum
+
+  delay = 'delay' ~alnum
+  force = 'force' ~alnum
+
+  keyword = fun | let | letrec | in | if | then | else | match | with | nullK | trueK | falseK | delay | force
+
+  tokens = (keyword | ident | _)*
+}
+
+    </script>
+    <script src="resources/ohm.min.js"></script>
+
+    <script src="F.js"></script>
+    <script src="prettyPrint.js"></script>
+  </head>
+  <body>
+    <everything>
+      <header>
+        <part>Part I:</part>
+        <descr>Functional Programming</descr>
+        <detail>(interpreter)</detail>
+      </header>
+      <abstract>
+        In the first part of this class, we'll "prototype" a functional programming language that is similar to
+        <a href="http://en.wikipedia.org/wiki/ML_(programming_language)">ML</a> as a simple interpreter.
+        We'll start out with a small base language that supports arithmetic expressions, conditionals,
+        multi-argument functions, and <b>let</b> expressions.
+        Then we'll grow the language to support more advanced features like <i>currying</i>, pattern matching,
+        and list comprehensions.
+      </abstract>
+      <section>
+        <sectionHeader>
+          <span>Homework #1: The Base Language</span>
+        </sectionHeader>
+        <p>
+          <due>
+            <b>Due at 11:30pm on Tuesday, January 20.</b>
+            Turn in just your <tt>evalAST.js</tt> file through the course page on CCLE.
+          </due>
+        </p>
+        <p>
+          Here's what the concrete syntax of the base language looks like, and how we'll represent it as abstract syntax
+          in JavaScript:
+        </p>
+        <p>
+          <table class="syntax">
+            <tr>
+              <th></th>
+              <th>Concrete Syntax</th>
+              <th>JS AST</th>
+            </tr>
+            <tr>
+              <td>e ::=</td>
+              <td>
+                <multival>
+                  <div>primValue</div>
+                  <div>x</div>
+                  <div><code>fun</code> x<sub>1</sub> x<sub>2</sub> &hellip; <code>-&gt;</code> e</div>
+                  <div>e<sub>f</sub> e<sub>1</sub> e<sub>2</sub> &hellip;</div>
+                  <div><code>let</code> x <code>=</code> e<sub>1</sub> <code>in</code> e<sub>2</sub></div>
+                  <div><code>if</code> e<sub>1</sub> <code>then</code> e<sub>2</sub> <code>else</code> e<sub>3</sub></div>
+                  <div>e<sub>1</sub> op e<sub>2</sub></div>
+                </multival>
+              </td>
+              <td>
+                <div>primValue</div>
+                <div><code>['id',</code> x<code>]</code></div>
+                <div><code>['fun', [</code>x<sub>1</sub><code>,</code> x<sub>2</sub><code>,</code> &hellip;<code>]</code>, e<code>]</code></div>
+                <div><code>['call',</code> e<sub>f</sub><code>,</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>,</code> &hellip;<code>]</code></div>
+                <div><code>['let',</code> x<code>,</code> e<sub>1</sub><code>,</code> e<sub>2</sub></abs><code>]</code></div>
+                <div><code>['if',</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>,</code> e<sub>3</sub><code>]</code></div>
+                <div><code>[</code>op<code>,</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>]</code>
+                <sidebar>op <text>&isin;<br>{</set><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code>, <code>=</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&&</code>, <code>||</code><set>}</set></text><br><em>Note:</em> the <code>=</code> and <code>!=</code> operators in our language have the same semantics as JavaScript's <code>===</code> and <code>!==</code> operators, respectively.</sidebar></div>
+              </td>
+            </tr>
+            <tr>
+              <td>primValue ::=</td>
+              <td colspan="2">
+                <text>
+                  any JavaScript <code>Number</code> or <code>Boolean</code> literal, or <code>null</code>
+                </text>
+              </td>
+            </tr>
+            <tr>
+              <td>x ::=</td>
+              <td colspan="2">
+                <text>any JavaScript</text> <code>String</code> <text>literal</text></text>
+              </td>
+            </tr>
+          </table>
+        </p>
+        <p>
+          You'll be implementing an interpreter for this language, in abstract syntax form.
+          But writing programs in abstract syntax gets old real fast, so to make your interpreter more convenient to
+          use, we'll provide a parser.*
+          <sidebar>
+            * Parsing is not the focus of this class, but for those of you who are interested: our parser is generated
+            from the <i>Ohm</i> grammar in <a id="pageSourceAnchor">this page</a>; the set of semantic actions that
+            produce ASTs is <a href="F.js">here</a>.
+          </sidebar>
+          <script>
+
+pageSourceAnchor.setAttribute('href', 'view-source:' + window.location.href);
+
+          </script>
+        </p>
+        <p>
+          The parser for this assignment is accessible via an object that
+          is stored in the global variable <conc>F</conc>, which is declared in <a href="F.js">this file</a>.
+          Once you write the evaluator, you can hook it up to our stuff by writing the following statement:
+          <codeBlock>F.evalAST = function(ast) {
+  // <text>pass </text>ast<text> to your evaluator and return the result</text>
+};</codeBlock>
+          To make things easy, we've included a file called <a href="evalAST.js"><code>evalAST.js</code></a> where you
+          can do your work.
+          <script src="evalAST.js"></script>
+        </p>
+        <p>
+          <b>A note on evaluation.</b>
+          The argument of your <code>evalAST</code> function will be an expression (as defined above), and its
+          return value will be a <i>value</i>.
+          The language of values is defined below:
+        </p>
+        <p>
+          <table class="syntax">
+            <tr>
+              <td>v ::=</td>
+              <td>
+                <multival>
+                  <div>primValue</div>
+                  <div>
+                    <code>['closure', [</code> x<sub>1</sub><code>,</code> x<sub>2</sub><code>,</code> &hellip;<code>],</code> e<code>,</code> env<code>]</code>
+                  </div>
+                </multival>
+              </td>
+            </tr>
+          </table>
+        </p>
+        <p>
+          <b>Unit tests.</b>*
+          <sidebar>
+            * <b>Unit tests are not just for Fortune-500 companies, you know!</b> In fact, it's a <em>great idea</em>
+            to write unit tests when you're prototyping a new programming language. Unit tests give you the freedom to
+            change your mind about the implementation strategy (e.g., make dramatic changes to the current prototype,
+            or even start again from scratch) without the risk that you will unknowingly break something that used to
+            work. They will save you a huge amount of time and effort in the long run, guaranteed.
+          </sidebar>
+          We have included some unit tests for your prototype below. These will run automatically every
+          time you refresh this page. Please note that these tests are not meant to be comprehensive, they're just a few
+          examples to give you a better understanding of the semantics of our language. (We expect you will still need
+          more information on the semantics of the language, and may want to know the motivation behind some of our
+          design decisions. Feel free to ask us in class or on Piazza.)
+        </p>
+        <p>
+          We <b>strongly recommend</b> that you add your own unit tests &mdash; feel free to share them with other
+          students on Piazza, too!
+          Adding tests is easy: all you have to do is edit <a href="hw1-tests.js"><code>hw1-tests.js</code></a>,
+          the format is pretty self-explanatory.
+          (The tests for Homework #2 are in <a
+	  href="hw2-tests.js"><code>hw2-tests.js</code></a>.)
+        </p>
+        <script src="hw1-tests.js"></script>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Homework #2: Extensions</span>
+        </sectionHeader>
+        <p>
+          <due>
+            <b>Due at 11:30pm on Wednesday, January 28.</b>
+            Turn in just your <tt>evalAST.js</tt> file through the course page on CCLE.
+          </due>
+        </p>
+        <p>
+          Next, we'll make several extensions to the language:
+          <ol>
+            <li>
+              Change the semantics of <b>let</b> so that you can write
+        recursive functions.  That is, <b>let</b> should now have the
+        same semantics as <b>let rec</b> in ML.
+            </li>
+            <li>
+              Modify <b>call</b> to support <i>currying</i>, i.e., if you pass fewer arguments than the function
+              requires, the result is a new function that takes the remaining arguments.
+            </li>
+            <li>
+              Add a Lisp-style <b>cons</b> expression for creating
+        pairs, which enables programmers to implement lists and other
+        data structures (see the example tests below), and &hellip;
+            </li>
+            <li>
+              &hellip; add a <b>match</b> expression to support simple
+        ML-style pattern-matching.
+            </li>
+            <li>
+              Add a <b>set</b> expression (for assignment) and <b>seq</b> (for compound statements).
+            </li>
+            <li>
+              Add Haskell-style <a
+        href="http://en.wikipedia.org/wiki/List_comprehension">list
+        comprehensions</a>. 
+            </li>
+            <li>
+              Add Scheme-style
+              <a href="http://en.wikipedia.org/wiki/Scheme_(programming_language)#Delayed_evaluation"><b>delay</b> and
+              <b>force</b></a> operations.
+            </li>
+          </ol>
+        </p>
+        <p>
+          Here's how your language will grow to accommodate extensions 3&mdash;7:
+        </p>
+        <p>
+          <table class="syntax">
+            <tr>
+              <th></th>
+              <th>Concrete Syntax</th>
+              <th>JS AST</th>
+            </tr>
+            <tr>
+              <td>e ::=</td>
+              <td>
+                <multival>
+                  <div>&hellip;</div>
+                  <div>e<sub>1</sub><code>::</code>e<sub>2</sub></div>
+                  <div>
+                    <code>match</code> e <code>with</code>
+                    p<sub>1</sub> <code>-&gt;</code> e<sub>1</sub>
+                    <code>|</code> p<sub>2</sub> <code>-></code> e<sub>2</sub>
+                    &hellip;
+                  <div>x <code>:=</code> e</div>
+                  <div>e<sub>1</sub><code>;</code> e<sub>2</sub></div>
+                  <div><code>[</code>e <code>|</code> x <code>&lt;-</code> e<sub>list</sub> <text>[</text><code>,</code> e<sub>pred</sub><text>]</text><code>]</code></div>
+                  <div><code>delay</code> e</div>
+                  <div><code>force</code> e</div>
+                </multival>
+              </td>
+              <td>
+                <div>&hellip;</div>
+                <div><code>['cons',</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>]</code></div>
+                <div><code>['match',</code> e<code>,</code> p<sub>1</sub><code>,</code> e<sub>1</sub><code>,</code> p<sub>2</sub><code>,</code> e<sub>2</sub><code>,</code> &hellip;<code>]</code></div>
+                <div><code>['set',</code> x<code>,</code> e<code>]</code></div>
+                <div>
+                  <code>['seq',</code> e<sub>1</sub><code>,</code> e<sub>2</sub><code>]</code>
+                  <sidebar>Evaluates <i>e<sub>1</sub></i> then <i>e<sub>2</sub></i>.</sidebar>
+                </div>
+                <div><code>['listComp',</code> e<code>,</code> x<code>,</code> e<sub>list</sub><code>,</code> <text>[</text><code>,</code> e<sub>pred</sub><text>]</text><code>]</code></div>
+                <div><code>['delay',</code> e<code>]</code></div>
+                <div><code>['force',</code> e<code>]</code></div>
+              </td>
+            </tr>
+            <tr>
+              <td>p ::=</td>
+              <td>
+                <multival>
+                  <div><code>_</code></div>
+                  <div>x</div>
+                  <div>p<sub>1</sub><code>::</code>p<sub>2</sub></div>
+                </multival>
+              </td>
+              <td>
+                <div>
+                  <sidebar>Matches any value.</sidebar>
+                  <code>['_']</code>
+                </div>
+                <div>
+                  <sidebar>Matches any value and binds it to <i>x</i>.</sidebar>
+                  <code>['id',</code> x<code>]</code></div>
+                </div>
+                <div>
+                  <sidebar>Matches a <i>cons cell</i>.</sidebar>
+                  <code>['cons',</code> p<sub>1</sub><code>,</code> p<sub>2</sub><code>]</code>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>v ::=</td>
+              <td>
+                <multival>
+                  <div>&nbsp;</div>
+                  <div>&nbsp;</div>
+                </multival>
+              </td>
+              <td>
+                <div>&hellip;</div>
+                <div><code>['cons',</code> v<sub>1</sub><code>,</code> v<sub>2</sub><code>]</code></div>
+              </td>
+            </tr>
+          </table>
+        </p>
+        <script src="hw2-tests.js"></script>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Playground</span>
+        </sectionHeader>
+        <script>
+
+insertPlayground(
+    F,
+    ['let f = fun x -> x * x in',
+     '  f 5 + 17'].join('\n')
+);
+
+        </script>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Epilogue</span>
+        </sectionHeader>
+        <p>
+          What we've got at this point is a prototype of a functional language that is very similar to ML.
+          So go ahead and give yourself a good pat on the back, you deserve it!
+          This kind of <i>naive</i> implementation style, where you always favor simplicity over performance, is very
+          useful to researchers and language designers because (i) it enables you to get something
+          working quickly, and with minimal effort &mdash; something to think with! &mdash; and (ii) the
+          simplicity of the prototype makes it easy for you to experiment with changes and
+          extensions to the semantics of the language.
+        </p>
+        <p>
+          If you're interested in pushing this project further, here are a few things you might like to try:
+          <ul>
+            <li>
+              The <b>delay</b> and <b>force</b> operations that you implemented as part of Homework #2
+              can be used to write programs that operate on infinite streams. This enables programmers to
+              <a href="http://research.microsoft.com/en-us/um/people/simonpj/papers/haskell-retrospective/HaskellRetrospective.pdf">separate generation from selection</a>, which is a powerful form of modularity.
+              But writing programs with explicit <b>delay</b>s and <b>force</b>s is not all that nice, especially
+              if you've seen how elegant the equivalent programs can be in a language that is
+              <a href="http://en.wikipedia.org/wiki/Lazy_evaluation">lazy</a> by default, like
+              <a href="http://en.wikipedia.org/wiki/Haskell_(programming_language)">Haskell</a>.
+              Change the evaluation strategy of your language to make it lazy.
+            <li>
+              Add <i>bindings</i> to some of the functionality that's available in the web browser, e.g., so you can
+              write programs that draw on a
+              <a href="https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Canvas_tutorial">canvas
+              element</a>, or dynamically add / modify DOM nodes to make web pages that are interactive.
+            </li>
+            <li>
+              Write a <a href="http://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system">type inferencer</a>
+              for your language.
+            </li>
+            <li>
+              Make your prototype more efficient by (for example) designing a more efficient
+              representation for environments, or <a href="http://en.wikipedia.org/wiki/Tail_call">eliminating tail
+              calls</a>.
+            </li>
+          </ul>
+        </p>
+      </section>
+    </everything>
+  </body>
+</html>
+
