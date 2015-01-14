@@ -184,14 +184,6 @@ Impl.Visitor.prototype[ 'visit>' ] = Impl.Visitor.checkType("number", function(l
   return l > r;
 });
 
-Impl.Visitor.prototype[ 'visit=' ] = Impl.Visitor.checkType("number", function(l, r){
-  return l === r;
-});
-
-Impl.Visitor.prototype[ 'visit!=' ] = Impl.Visitor.checkType("number", function(l, r){
-  return l !== r;
-});
-
 Impl.Visitor.prototype[ 'visit%' ] = Impl.Visitor.checkType("number", function(l, r){
   return l % r;
 });
@@ -204,9 +196,19 @@ Impl.Visitor.prototype.visitAnd = Impl.Visitor.checkType("boolean", function(l, 
   return l && r;
 });
 
+Impl.Visitor.prototype[ 'visit=' ] = function(e1, e2) {
+  return e1.accept(this) === e2.accept(this);
+};
+
+Impl.Visitor.prototype[ 'visit!=' ] = function(e1, e2) {
+  return e1.accept(this) !== e2.accept(this);
+};
+
 // TODO consider the impact of eager eval
 Impl.Visitor.prototype.visitIf = function(e1, e2, e3) {
-  if( e1.accept(this) ){
+  var b = this.checkType(e1, "boolean");
+
+  if(b) {
     return e2.accept(this);
   } else {
     return e3.accept(this);
