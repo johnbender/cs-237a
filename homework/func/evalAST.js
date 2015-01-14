@@ -136,7 +136,7 @@ Impl.Visitor.prototype.scope = function(update, callback) {
 
   // restore the previous env
   this.env = restore;
-};
+}
 
 Impl.Visitor.prototype.checkType = function(e, typeName) {
   var v = e.accept(this);
@@ -219,10 +219,6 @@ Impl.Visitor.prototype.visitId = function(id) {
   // get the id (should be a Leaf) and get the value of
   // the expression bound to it since these semantics are lazy
   var result = this.env.lookup(id.accept(this));
-
-  if( typeof result == "object" ){
-    result = result.accept(this);
-  }
 
   return result;
 };
