@@ -47,7 +47,7 @@ Impl.Ast.Node = function(ast){
   this.node = ast;
 
   // we expect the first node to be a leaf/string
-  this.nodeType = ast[0].value;
+  this.nodeType = ast[0].accept(this);
 
   // set the method that the visitor will use on accept
   this.visitMethod = "visit" + initCap(this.nodeType);
@@ -141,7 +141,9 @@ Impl.FuncVisitor.prototype.visitIf = function(e1, e2, e3) {
 };
 
 Impl.FuncVisitor.prototype.visitId = function(id) {
-  return this.env.lookup(id.value).value;
+  // get the id (should be a Leaf) and get the value of
+  // the expression bound to it since these semantics are lazy
+  return this.env.lookup(id.accept(this)).accept(this);
 };
 
 Impl.FuncVisitor.prototype.visitCall = function(e1) {
@@ -152,18 +154,19 @@ Impl.FuncVisitor.prototype.visitCall = function(e1) {
 
 Impl.FuncVisitor.prototype.visitFun = function(params, e1) {
   return function() {
-    var envUpdate, ags, result;
+    var envUpdate, ags, result, self;
 
+    self = this;
     envUpdate = {};
     args = Array.prototype.slice.call(arguments);
 
     // TODO define forEach on ast node
     params.node.forEach(function(p, i) {
-      envUpdate[p.value] = args[i];
+      envUpdate[p.accept(self)] = args[i];
     });
 
     this.scope(envUpdate, function() {
-      result = e1.accept(this);
+      result = e1.accept(self);
     });
 
     return result;
