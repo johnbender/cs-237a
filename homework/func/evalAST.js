@@ -263,13 +263,13 @@ F.evalAST = function(ast) {
     },
 
     visitFun : function(params, e) {
-      var freeVars = this.env;
-
+      // NOTE we rely on the fact that the object ref to
+      // this.env will show updates when that becomes relevant
       return Ast.create([
         'closure',
         params.original,
         e.original,
-        freeVars
+        this.env
       ]);
     },
 
