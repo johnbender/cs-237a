@@ -159,138 +159,146 @@ Impl.Visitor.checkType = function(typeName, fn) {
   };
 };
 
-// TODO setup an extend method
-Impl.Visitor.prototype[ 'visit*' ] = Impl.Visitor.checkType("number", function(l, r){
-  return l * r;
-});
-
-Impl.Visitor.prototype[ 'visit/' ] = Impl.Visitor.checkType("number", function(l, r){
-  return l / r;
-});
-
-Impl.Visitor.prototype[ 'visit-' ] = Impl.Visitor.checkType("number", function(l, r){
-  return l - r;
-});
-
-Impl.Visitor.prototype[ 'visit+' ] = Impl.Visitor.checkType("number", function(l, r){
-  return l + r;
-});
-
-Impl.Visitor.prototype[ 'visit<' ] = Impl.Visitor.checkType("number", function(l, r){
-  return l < r;
-});
-
-Impl.Visitor.prototype[ 'visit>' ] = Impl.Visitor.checkType("number", function(l, r){
-  return l > r;
-});
-
-Impl.Visitor.prototype[ 'visit%' ] = Impl.Visitor.checkType("number", function(l, r){
-  return l % r;
-});
-
-Impl.Visitor.prototype.visitOr = Impl.Visitor.checkType("boolean", function(l, r){
-  return l || r;
-});
-
-Impl.Visitor.prototype.visitAnd = Impl.Visitor.checkType("boolean", function(l, r){
-  return l && r;
-});
-
-Impl.Visitor.prototype[ 'visit=' ] = function(e1, e2) {
-  return e1.accept(this) === e2.accept(this);
-};
-
-Impl.Visitor.prototype[ 'visit!=' ] = function(e1, e2) {
-  return e1.accept(this) !== e2.accept(this);
-};
-
-// TODO consider the impact of eager eval
-Impl.Visitor.prototype.visitIf = function(e1, e2, e3) {
-  var b = this.checkType(e1, "boolean");
-
-  if(b) {
-    return e2.accept(this);
-  } else {
-    return e3.accept(this);
+Impl.Visitor.extend = function(extension) {
+  for(prop in extension){
+    if( extension.hasOwnProperty(prop) ){
+      Impl.Visitor.prototype[prop] = extension[prop];
+    }
   }
 };
 
-Impl.Visitor.prototype.visitId = function(id) {
-  // get the id (should be a Leaf) and get the value of
-  // the expression bound to it since these semantics are lazy
-  var result = this.env.lookup(id.accept(this));
+Impl.Visitor.extend({
+  'visit*': Impl.Visitor.checkType("number", function(l, r){
+    return l * r;
+  }),
 
-  return result;
-};
+  'visit/': Impl.Visitor.checkType("number", function(l, r){
+    return l / r;
+  }),
 
-Impl.Visitor.prototype.visitCall = function(e1) {
-  var self = this, args = Array.prototype.slice.call(arguments, 1);
+  'visit-': Impl.Visitor.checkType("number", function(l, r){
+    return l - r;
+  }),
 
-  // strict argument eval
-  args = args.map(function(a) {
-    return a.accept(self);
-  });
+  'visit+': Impl.Visitor.checkType("number", function(l, r){
+    return l + r;
+  }),
 
-  return e1.accept(this).apply(this, args);
-};
+  'visit<': Impl.Visitor.checkType("number", function(l, r){
+    return l < r;
+  }),
 
-Impl.Visitor.prototype.visitFun = function(params, e1) {
-  var freeVars = this.env;
+  'visit>': Impl.Visitor.checkType("number", function(l, r){
+    return l > r;
+  }),
 
-  return function() {
-    var envUpdate, argsEnv, args, result, self;
+  'visit%': Impl.Visitor.checkType("number", function(l, r){
+    return l % r;
+  }),
 
-    self = this;
-    envUpdate = {};
-    args = Array.prototype.slice.call(arguments);
+  visitOr: Impl.Visitor.checkType("boolean", function(l, r){
+  return l || r;
+  }),
 
-    // TODO sort out the "arrayness" of the params nodes
-    if( args.length != params.node.length ){
-      throw new Error(
-        "Function call expected "
-          + params.node.length
-          + " params but got "
-          + args.length
-      );
+  visitAnd: Impl.Visitor.checkType("boolean", function(l, r){
+  return l && r;
+  }),
+
+  'visit=': function(e1, e2) {
+    return e1.accept(this) === e2.accept(this);
+  },
+
+  'visit!=': function(e1, e2) {
+    return e1.accept(this) !== e2.accept(this);
+  },
+
+  visitIf : function(e1, e2, e3) {
+    var b = this.checkType(e1, "boolean");
+
+    if(b) {
+      return e2.accept(this);
+    } else {
+      return e3.accept(this);
     }
+  },
 
-    // push the params onto the env
-    // TODO sort out the "arrayness" of the params nodes
-    params.node.forEach(function(p, i) {
-      envUpdate[p.accept(self)] = args[i];
+  visitId : function(id) {
+    // get the id (should be a Leaf) and get the value of
+    // the expression bound to it since these semantics are lazy
+    var result = this.env.lookup(id.accept(this));
+
+    return result;
+  },
+
+  visitCall : function(e1) {
+    var self = this, args = Array.prototype.slice.call(arguments, 1);
+
+    // strict argument eval
+    args = args.map(function(a) {
+      return a.accept(self);
     });
 
-    // new environment with the function arguments
-    argsEnv = new Impl.Env(envUpdate);
+    return e1.accept(this).apply(this, args);
+  },
 
-    // params should go on the current env *after* the copied env from
-    // when the fun was created so that the params have precedence
-    // closed-over env and params should also be poped after the function
-    // exits since inner funs should carry a ref on creation
-    this.scope(freeVars.clone(), function() {
-      this.scope(argsEnv, function() {
-        result = e1.accept(self);
+  visitFun : function(params, e1) {
+    var freeVars = this.env;
+
+    return function() {
+      var envUpdate, argsEnv, args, result, self;
+
+      self = this;
+      envUpdate = {};
+      args = Array.prototype.slice.call(arguments);
+
+      // TODO sort out the "arrayness" of the params nodes
+      if( args.length != params.node.length ){
+        throw new Error(
+          "Function call expected "
+            + params.node.length
+            + " params but got "
+            + args.length
+        );
+      }
+
+      // push the params onto the env
+      // TODO sort out the "arrayness" of the params nodes
+      params.node.forEach(function(p, i) {
+        envUpdate[p.accept(self)] = args[i];
       });
+
+      // new environment with the function arguments
+      argsEnv = new Impl.Env(envUpdate);
+
+      // params should go on the current env *after* the copied env from
+      // when the fun was created so that the params have precedence
+      // closed-over env and params should also be poped after the function
+      // exits since inner funs should carry a ref on creation
+      this.scope(freeVars.clone(), function() {
+        this.scope(argsEnv, function() {
+          result = e1.accept(self);
+        });
+      });
+
+      return result;
+    };
+  },
+
+  // TODO can be done using call but constructing nodes
+  visitLet : function(id, e1, e2) {
+    var idString, result, letEnv, envUpdate = {}, self = this;
+
+    idString = id.accept(this);
+    envUpdate = {};
+
+    envUpdate[idString] = e1.accept(this);
+
+    letEnv = new Impl.Env(envUpdate);
+
+    this.scope(letEnv, function() {
+      result = e2.accept(this);
     });
 
     return result;
-  };
-};
-
-// TODO can be done using call but constructing nodes
-Impl.Visitor.prototype.visitLet = function(id, e1, e2) {
-  var idString, result, letEnv, envUpdate = {}, self = this;
-
-  idString = id.accept(this);
-  envUpdate = {};
-
-  envUpdate[idString] = e1.accept(this);
-
-  letEnv = new Impl.Env(envUpdate);
-
-  this.scope(letEnv, function() {
-    result = e2.accept(this);
-  });
-
-  return result;
-};
+  }
+});
