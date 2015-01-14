@@ -288,6 +288,15 @@ tests(
     shouldThrow: true
   },
 
+  {
+    name: 'retains proper closed over value instead of new scope value',
+    code: 'let x = 1 in\n'
+      + '  let f = (let y = 2 in (fun x -> y)) in\n'
+      + '    let y = 3 in\n'
+      + '      f y',
+    expected: 2
+  },
+
   /* start Runhang's test */
   {
     name: 'rh-t1',
