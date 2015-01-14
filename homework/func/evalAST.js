@@ -1,17 +1,27 @@
 F.evalAST = function(ast) {
   var visitor, astObj;
 
-  astObj = new Impl.Ast.create(ast);
-  visitor = new Impl.Visitor();
+  astObj = new window.Impl.Ast.create(ast);
+  visitor = new window.Impl.Visitor();
 
   return astObj.accept(visitor);
 };
 
-Impl = (function() {
+(function() {
   var Ast = {};
 
   function initCap(string){
     return string.charAt(0).toUpperCase() + string.slice(1);
+  }
+
+  function extend(l, r){
+    for(prop in r){
+      if( r.hasOwnProperty(prop) ){
+        l[prop] = r[prop];
+      }
+    }
+
+    return l;
   }
 
   // "factory" for the ast nodes
@@ -72,80 +82,61 @@ Impl = (function() {
     );
   };
 
+
+
   // environment tracking
   function Env(extension, parent){
     this.parent = parent;
     this.extension = extension || {};
   };
 
-  Env.prototype.lookup = function(key) {
-    if( this.extension.hasOwnProperty(key) ) {
-      return this.extension[key];
+  extend(Env.prototype, {
+    lookup: function(key) {
+      if( this.extension.hasOwnProperty(key) ) {
+        return this.extension[key];
+      }
+
+      if( ! this.parent ) {
+        throw new Error("The identifier `" + key + "` is undefined" );
+      }
+
+      return this.parent.lookup(key);
+    },
+
+    top: function() {
+      var next = this;
+
+      while(! next.top ) {
+        next = next.parent;
+      }
+
+      return next;
+    },
+
+    append:function(env) {
+      env.top().parent = this;
+      return env;
+    },
+
+    clone: function() {
+      var extension = {}, parent;
+
+      for(prop in this.extension) {
+        extension[prop] = this.extension[prop];
+      }
+
+      if( this.parent ){
+        parent = this.parent.clone();
+      }
+
+      return new this.constructor(extension, parent);
     }
+  });
 
-    if( ! this.parent ) {
-      throw new Error("The identifier `" + key + "` is undefined" );
-    }
-
-    return this.parent.lookup(key);
-  };
-
-  Env.prototype.top = function() {
-    var next = this;
-
-    while(! next.top ) {
-      next = next.parent;
-    }
-
-    return next;
-  };
-
-  Env.prototype.append = function(env) {
-    env.top().parent = this;
-    return env;
-  };
-
-  Env.prototype.clone = function() {
-    var extension = {}, parent;
-
-    for(prop in this.extension) {
-      extension[prop] = this.extension[prop];
-    }
-
-    if( this.parent ){
-      parent = this.parent.clone();
-    }
-
-    return new this.constructor(extension, parent);
-  };
 
 
   function Visitor() {
     this.env = new Env();
-  };
-
-  Visitor.prototype.scope = function(update, callback) {
-    // add a new extension to the environment
-    var restore = this.env;
-
-    // extend the current environment
-    this.env = this.env.append(update);
-
-    // invoke the callback with the updated env
-    callback.call(this);
-
-    // restore the previous env
-    this.env = restore;
-  }
-
-  Visitor.prototype.checkType = function(e, typeName) {
-    var v = e.accept(this);
-
-    if( typeof v !== typeName ){
-      throw new Error( "expression should be of type: " + typeName );
-    }
-
-    return v;
   };
 
   // TODO this all sucks
@@ -159,16 +150,33 @@ Impl = (function() {
     };
   };
 
-  Visitor.extend = function(extension) {
-    for(prop in extension){
-      if( extension.hasOwnProperty(prop) ){
-        Visitor.prototype[prop] = extension[prop];
-      }
-    }
-  };
-
   // all visit methods
-  Visitor.extend({
+  extend(Visitor.prototype, {
+
+    scope: function(update, callback) {
+      // add a new extension to the environment
+      var restore = this.env;
+
+      // extend the current environment
+      this.env = this.env.append(update);
+
+      // invoke the callback with the updated env
+      callback.call(this);
+
+      // restore the previous env
+      this.env = restore;
+    },
+
+    checkType: function(e, typeName) {
+      var v = e.accept(this);
+
+      if( typeof v !== typeName ){
+        throw new Error( "expression should be of type: " + typeName );
+      }
+
+      return v;
+    },
+
     'visit*': Visitor.checkType("number", function(l, r){
       return l * r;
     }),
@@ -304,7 +312,7 @@ Impl = (function() {
     }
   });
 
-  return {
+  window.Impl = {
     Ast: Ast,
     Env: Env,
     Visitor: Visitor
