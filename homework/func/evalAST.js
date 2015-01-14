@@ -157,7 +157,7 @@ F.evalAST = function(ast) {
   // all visit methods
   extend(Visitor.prototype, {
 
-    scope: function(opts) { //update, parent, callback) {
+    scopedVisit: function(opts) { //update, parent, callback) {
       // add a new extension to the environment
       var parent, restore, result;
 
@@ -302,7 +302,7 @@ F.evalAST = function(ast) {
       // when the fun was created so that the params have precedence
       // closed-over env and params should also be poped after the function
       // exits since inner funs should carry a ref on creation
-      result = this.scope({
+      result = this.scopedVisit({
         update: envUpdate,
         parent: closureEnv,
         expression: e1
@@ -320,7 +320,7 @@ F.evalAST = function(ast) {
 
       envUpdate[idString] = e1.accept(this);
 
-      result = this.scope({
+      result = this.scopedVisit({
         update: envUpdate,
         parent: this.env,
         expression: e2
