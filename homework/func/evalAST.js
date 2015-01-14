@@ -2,7 +2,7 @@ F.evalAST = function(ast) {
   var visitor, astObj;
 
   astObj = new Impl.Ast.create(ast);
-  visitor = new Impl.FuncVisitor();
+  visitor = new Impl.Visitor();
 
   return astObj.accept(visitor);
 };
@@ -17,7 +17,7 @@ function initCap(string){
 Impl.Ast.create = function(ast) {
   var wrapped;
 
-  if( ast.constructor !== Array ){
+  if( ast === null || ast.constructor !== Array ){
     return new Impl.Ast.Leaf(ast);
   }
 
@@ -120,11 +120,11 @@ Impl.Env.prototype.clone = function() {
 };
 
 
-Impl.FuncVisitor = function(){
+Impl.Visitor = function(){
   this.env = new Impl.Env();
 };
 
-Impl.FuncVisitor.prototype.scope = function(update, callback) {
+Impl.Visitor.prototype.scope = function(update, callback) {
   // add a new extension to the environment
   var restore = this.env;
 
@@ -138,45 +138,74 @@ Impl.FuncVisitor.prototype.scope = function(update, callback) {
   this.env = restore;
 };
 
+
+Impl.Visitor.prototype.checkType = function(e, typeName) {
+  var v = e.accept(this);
+
+  if( typeof v !== typeName ){
+    throw new Error( "expression should be of type: " + typeName );
+  }
+
+  return v;
+};
+
+Impl.Visitor.checkType = function(typeName, fn) {
+  return function(e1, e2) {
+    var l, r;
+    l = this.checkType(e1, typeName);
+    r = this.checkType(e2, typeName);
+
+    return fn(l, r);
+  };
+};
+
 // TODO setup an extend method
-Impl.FuncVisitor.prototype[ 'visit*' ] = function(e1, e2){
-  return e1.accept(this) * e2.accept(this);
-};
+Impl.Visitor.prototype[ 'visit*' ] = Impl.Visitor.checkType("number", function(l, r){
+  return l * r;
+});
 
-Impl.FuncVisitor.prototype[ 'visit/' ] = function(e1, e2){
-  return e1.accept(this) / e2.accept(this);
-};
+Impl.Visitor.prototype[ 'visit/' ] = Impl.Visitor.checkType("number", function(l, r){
+  return l / r;
+});
 
-Impl.FuncVisitor.prototype[ 'visit-' ] = function(e1, e2){
-  return e1.accept(this) - e2.accept(this);
-};
+Impl.Visitor.prototype[ 'visit-' ] = Impl.Visitor.checkType("number", function(l, r){
+  return l - r;
+});
 
-Impl.FuncVisitor.prototype[ 'visit+' ] = function(e1, e2){
-  return e1.accept(this) + e2.accept(this);
-};
+Impl.Visitor.prototype[ 'visit+' ] = Impl.Visitor.checkType("number", function(l, r){
+  return l + r;
+});
 
-Impl.FuncVisitor.prototype[ 'visit<' ] = function(e1, e2){
-  return e1.accept(this) < e2.accept(this);
-};
+Impl.Visitor.prototype[ 'visit<' ] = Impl.Visitor.checkType("number", function(l, r){
+  return l < r;
+});
 
-Impl.FuncVisitor.prototype[ 'visit>' ] = function(e1, e2){
-  return e1.accept(this) > e2.accept(this);
-};
+Impl.Visitor.prototype[ 'visit>' ] = Impl.Visitor.checkType("number", function(l, r){
+  return l > r;
+});
 
-Impl.FuncVisitor.prototype[ 'visit=' ] = function(e1, e2){
-  return e1.accept(this) === e2.accept(this);
-};
+Impl.Visitor.prototype[ 'visit=' ] = Impl.Visitor.checkType("number", function(l, r){
+  return l === r;
+});
 
-Impl.FuncVisitor.prototype[ 'visit!=' ] = function(e1, e2){
-  return e1.accept(this) !== e2.accept(this);
-};
+Impl.Visitor.prototype[ 'visit!=' ] = Impl.Visitor.checkType("number", function(l, r){
+  return l !== r;
+});
 
-Impl.FuncVisitor.prototype.visitOr = function(e1, e2){
-  return e1.accept(this) || e2.accept(this);
-};
+Impl.Visitor.prototype[ 'visit%' ] = Impl.Visitor.checkType("number", function(l, r){
+  return l % r;
+});
+
+Impl.Visitor.prototype.visitOr = Impl.Visitor.checkType("boolean", function(l, r){
+  return l || r;
+});
+
+Impl.Visitor.prototype.visitAnd = Impl.Visitor.checkType("boolean", function(l, r){
+  return l && r;
+});
 
 // TODO consider the impact of eager eval
-Impl.FuncVisitor.prototype.visitIf = function(e1, e2, e3) {
+Impl.Visitor.prototype.visitIf = function(e1, e2, e3) {
   if( e1.accept(this) ){
     return e2.accept(this);
   } else {
@@ -184,19 +213,19 @@ Impl.FuncVisitor.prototype.visitIf = function(e1, e2, e3) {
   }
 };
 
-Impl.FuncVisitor.prototype.visitId = function(id) {
+Impl.Visitor.prototype.visitId = function(id) {
   // get the id (should be a Leaf) and get the value of
   // the expression bound to it since these semantics are lazy
   return this.env.lookup(id.accept(this)).accept(this);
 };
 
-Impl.FuncVisitor.prototype.visitCall = function(e1) {
+Impl.Visitor.prototype.visitCall = function(e1) {
   var args = Array.prototype.slice.call(arguments, 1);
 
   return e1.accept(this).apply(this, args);
 };
 
-Impl.FuncVisitor.prototype.visitFun = function(params, e1) {
+Impl.Visitor.prototype.visitFun = function(params, e1) {
   var freeVars = this.env;
 
   return function() {
@@ -240,7 +269,7 @@ Impl.FuncVisitor.prototype.visitFun = function(params, e1) {
 };
 
 // TODO can be done using call but constructing nodes
-Impl.FuncVisitor.prototype.visitLet = function(id, e1, e2) {
+Impl.Visitor.prototype.visitLet = function(id, e1, e2) {
   var idString, result, letEnv, envUpdate = {}, self = this;
 
   idString = id.accept(this);
