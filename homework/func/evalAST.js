@@ -42,7 +42,6 @@ Impl.Ast.Leaf.prototype.accept = function(){
   return this.value;
 };
 
-
 // interior nodes in the AST
 Impl.Ast.Node = function(ast){
   this.node = ast;
@@ -71,7 +70,29 @@ Impl.Ast.Node.prototype.accept = function(visitor){
   );
 };
 
-Impl.FuncVisitor = function(){};
+
+// environment tracking
+Impl.Env = function(extension, parent){
+  this.parent = parent;
+  this.extension = extension || {};
+};
+
+Impl.Env.prototype.lookup = function(key) {
+  if( this.extension.hasOwnProperty(key) ) {
+    return this.extension[key];
+  }
+
+  if( ! this.parent ) {
+    throw new Error("The identifier `" + key + "` is undefined" );
+  }
+
+  return this.parent.lookup(key);
+};
+
+
+Impl.FuncVisitor = function(){
+  this.env = new Impl.Env();
+};
 
 // TODO setup an extend method
 Impl.FuncVisitor.prototype[ 'visit*' ] = function(e1, e2){
@@ -106,6 +127,56 @@ Impl.FuncVisitor.prototype[ 'visit!=' ] = function(e1, e2){
   return e1.accept(this) !== e2.accept(this);
 };
 
-Impl.FuncVisitor.prototype[ 'visitOr' ] = function(e1, e2){
+Impl.FuncVisitor.prototype.visitOr = function(e1, e2){
   return e1.accept(this) || e2.accept(this);
+};
+
+// TODO consider the impact of eager eval
+Impl.FuncVisitor.prototype.visitIf = function(e1, e2, e3) {
+  if( e1.accept(this) ){
+    return e2.accept(this);
+  } else {
+    return e3.accept(this);
+  }
+};
+
+Impl.FuncVisitor.prototype.visitId = function(id) {
+  return this.env.lookup(id.value).value;
+};
+
+Impl.FuncVisitor.prototype.visitCall = function(e1) {
+  var args = Array.prototype.slice.call(arguments, 1);
+
+  return e1.accept(this).apply(this, args);
+};
+
+Impl.FuncVisitor.prototype.visitFun = function(params, e1) {
+  return function() {
+    var envUpdate, ags, result;
+
+    envUpdate = {};
+    args = Array.prototype.slice.call(arguments);
+
+    // TODO define forEach on ast node
+    params.node.forEach(function(p, i) {
+      envUpdate[p.value] = args[i];
+    });
+
+    this.scope(envUpdate, function() {
+      result = e1.accept(this);
+    });
+
+    return result;
+  };
+};
+
+Impl.FuncVisitor.prototype.scope = function(update, callback) {
+  // add a new extension to the environment
+  this.env = new Impl.Env(update, this.env);
+
+  // invoke the callback with the updated env
+  callback.call(this);
+
+  // restore the previous env
+  this.env = this.env.parent;
 };
