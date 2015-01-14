@@ -62,11 +62,12 @@ Impl.Ast.Node.prototype.accept = function(visitor){
   }
 
   // throw an exception for unsupported node types
-  throw new Error("no visit method defined for node type, `"
-    + this.nodeType
-    + "`, expected: "
-    + this.visitMethod
-    + "`"
+  throw new Error(
+    "no visit method defined for node type, `"
+      + this.nodeType
+      + "`, expected: "
+      + this.visitMethod
+      + "`"
   );
 };
 
@@ -89,9 +90,52 @@ Impl.Env.prototype.lookup = function(key) {
   return this.parent.lookup(key);
 };
 
+Impl.Env.prototype.top = function() {
+  var next = this;
+
+  while(next.parent) {
+    next = next.parent;
+  }
+
+  return next;
+};
+
+Impl.Env.prototype.append = function(env) {
+  env.top().parent = this;
+  return env;
+};
+
+Impl.Env.prototype.clone = function() {
+  var extension = {}, parent;
+
+  for(prop in this.extension) {
+    extension[prop] = this.extension[prop];
+  }
+
+  if( this.parent ){
+    parent = this.parent.clone();
+  }
+
+  return new this.constructor(extension, parent);
+};
+
 
 Impl.FuncVisitor = function(){
   this.env = new Impl.Env();
+};
+
+Impl.FuncVisitor.prototype.scope = function(update, callback) {
+  // add a new extension to the environment
+  var restore = this.env;
+
+  // extend the current environment
+  this.env = this.env.append(update);
+
+  // invoke the callback with the updated env
+  callback.call(this);
+
+  // restore the previous env
+  this.env = restore;
 };
 
 // TODO setup an extend method
@@ -153,33 +197,62 @@ Impl.FuncVisitor.prototype.visitCall = function(e1) {
 };
 
 Impl.FuncVisitor.prototype.visitFun = function(params, e1) {
+  var freeVars = this.env;
+
   return function() {
-    var envUpdate, ags, result, self;
+    var envUpdate, argsEnv, args, result, self;
 
     self = this;
     envUpdate = {};
     args = Array.prototype.slice.call(arguments);
 
-    // TODO define forEach on ast node
+    // TODO sort out the "arrayness" of the params nodes
+    if( args.length != params.node.length ){
+      throw new Error(
+        "Function call expected "
+          + params.length
+          + " params but got "
+          + args.length
+      );
+    }
+
+    // push the params onto the env
+    // TODO sort out the "arrayness" of the params nodes
     params.node.forEach(function(p, i) {
       envUpdate[p.accept(self)] = args[i];
     });
 
-    this.scope(envUpdate, function() {
-      result = e1.accept(self);
+    // new environment with the function arguments
+    argsEnv = new Impl.Env(envUpdate);
+
+    // params should go on the current env *after* the copied env from
+    // when the fun was created so that the params have precedence
+    // closed-over env and params should also be poped after the function
+    // exits since inner funs should carry a ref on creation
+    this.scope(freeVars.clone(), function() {
+      this.scope(argsEnv, function() {
+        result = e1.accept(self);
+      });
     });
 
     return result;
   };
 };
 
-Impl.FuncVisitor.prototype.scope = function(update, callback) {
-  // add a new extension to the environment
-  this.env = new Impl.Env(update, this.env);
+// TODO can be done using call but constructing nodes
+Impl.FuncVisitor.prototype.visitLet = function(id, e1, e2) {
+  var idString, result, letEnv, envUpdate = {}, self = this;
 
-  // invoke the callback with the updated env
-  callback.call(this);
+  idString = id.accept(this);
+  envUpdate = {};
 
-  // restore the previous env
-  this.env = this.env.parent;
+  envUpdate[idString] = e1;
+
+  letEnv = new Impl.Env(envUpdate);
+
+  this.scope(letEnv, function() {
+    result = e2.accept(this);
+  });
+
+  return result;
 };
