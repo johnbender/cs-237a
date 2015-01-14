@@ -179,6 +179,8 @@ F.evalAST = function(ast) {
       var v = e.accept(this);
 
       if( typeof v !== typeName ){
+        debugger;
+
         throw new Error( "expression should be of type: " + typeName );
       }
 
@@ -243,6 +245,10 @@ F.evalAST = function(ast) {
       // get the id (should be a Leaf) and get the value of
       // the expression bound to it since these semantics are lazy
       var result = this.env.lookup(id.accept(this));
+
+      // if( result.accept ){
+      //   result = result.accept(this);
+      // }
 
       return result;
     },
@@ -318,8 +324,17 @@ F.evalAST = function(ast) {
       idString = id.accept(this);
       envUpdate = {};
 
-      envUpdate[idString] = e1.accept(this);
+      // store the expression itself for the identifier
+      envUpdate[idString] = e1;
 
+      // execute the assigned expression using e1 with for the id
+      envUpdate[idString] = this.scopedVisit({
+        update: envUpdate,
+        parent: this.env,
+        expression: e1
+      });
+
+      // run the body of the let as normal
       result = this.scopedVisit({
         update: envUpdate,
         parent: this.env,

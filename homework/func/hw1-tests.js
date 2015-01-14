@@ -89,12 +89,6 @@ tests(
     expected: 1234
   },
   {
-    name: 'let',
-    code: 'let x = 3 + 4 in\n' +
-      '  x - 2',
-    expected: 5
-  },
-  {
     name: 'unbound identifier',
     code: 'x + 1',
     shouldThrow: true
@@ -296,12 +290,21 @@ tests(
       + '      f y',
     expected: 2
   },
-
-  /* start Runhang's test */
   {
     name: 'rh-t1',
     code: 'let f = fun x -> ((x + 2) * x / 1) % 2 in\n' +
-      '(let x = 5 in let x = 3 in x) * (let x = 3 in f (x + 2))',
+      '  (let x = 5 in let x = 3 in x) * (let x = 3 in f (x + 2))',
     expected: 3
+  },
+  {
+    name: 'functions equal',
+    code: 'let f = (fun x -> x) in\n'
+      + '  f = f',
+    expected: true
+  },
+  {
+    name: 'functions not equal',
+    code: '(fun x -> x) = (fun x -> x)',
+    expected: false
   }
 );
