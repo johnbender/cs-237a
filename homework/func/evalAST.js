@@ -32,8 +32,7 @@ F.evalAST = function(ast) {
       return new Ast.Leaf(ast);
     }
 
-    wrapped = Ast.wrapAll(ast);
-    return new Ast.Node(wrapped);
+    return new Ast.Node(ast);
   };
 
   Ast.wrapAll = function(nodes) {
@@ -55,10 +54,13 @@ F.evalAST = function(ast) {
 
   // interior nodes in the AST
   Ast.Node = function(ast){
-    this.node = ast;
+    // mem bloat
+    this.original = ast;
+
+    this.node = Ast.wrapAll(ast);
 
     // we expect the first node to be a leaf/string
-    this.nodeType = ast[0].accept(this);
+    this.nodeType = this.original[0];
 
     // set the method that the visitor will use on accept
     this.visitMethod = "visit" + initCap(this.nodeType);
@@ -67,9 +69,10 @@ F.evalAST = function(ast) {
   Ast.Node.prototype.accept = function(visitor){
     // if the visitor supports the derived visit method call it
     if( visitor[this.visitMethod] ){
-      var arguments = this.node.slice(1);
+      // prepend the accept method args to the node sub-expressions
+      var args = Array.prototype.slice.call(arguments, 1).concat(this.node.slice(1));
 
-      return visitor[this.visitMethod].apply(visitor, arguments);
+      return visitor[this.visitMethod].apply(visitor, args);
     }
 
     // throw an exception for unsupported node types
@@ -240,57 +243,68 @@ F.evalAST = function(ast) {
     },
 
     visitCall : function(e1) {
-      var self = this, args = Array.prototype.slice.call(arguments, 1);
+      var self = this, args, closure;
+
+      args = Array.prototype.slice.call(arguments, 1);
 
       // strict argument eval
       args = args.map(function(a) {
         return a.accept(self);
       });
 
-      return e1.accept(this).apply(this, args);
+      // eval the fun or id to get the closure
+      closure = e1.accept(this);
+
+      return closure.accept(this, args);
     },
 
-    visitFun : function(params, e1) {
+    visitFun : function(params, e) {
       var freeVars = this.env;
 
-      return function() {
-        var envUpdate, argsEnv, args, result, self;
+      return Ast.create([
+        'closure',
+        params.original,
+        e.original,
+        this.env
+      ]);
+    },
 
-        self = this;
-        envUpdate = {};
-        args = Array.prototype.slice.call(arguments);
+    visitClosure: function(args, params, e1, env) {
+      var envUpdate, argsEnv, result, self;
 
-        // TODO sort out the "arrayness" of the params nodes
-        if( args.length != params.node.length ){
-          throw new Error(
-            "Function call expected "
-              + params.node.length
-              + " params but got "
-              + args.length
-          );
-        }
+      self = this;
+      envUpdate = {};
 
-        // push the params onto the env
-        // TODO sort out the "arrayness" of the params nodes
-        params.node.forEach(function(p, i) {
-          envUpdate[p.accept(self)] = args[i];
+      // TODO sort out the "arrayness" of the params nodes
+      if( args.length != params.node.length ){
+        throw new Error(
+          "Function call expected "
+            + params.node.length
+            + " params but got "
+            + args.length
+        );
+      }
+
+      // create an extension for the current environment with the args
+      // TODO sort out the "arrayness" of the params nodes
+      params.node.forEach(function(p, i) {
+        envUpdate[p.accept(self)] = args[i];
+      });
+
+      // new environment with the function arguments
+      argsEnv = new Env(envUpdate);
+
+      // params should go on the current env *after* the copied env from
+      // when the fun was created so that the params have precedence
+      // closed-over env and params should also be poped after the function
+      // exits since inner funs should carry a ref on creation
+      this.scope(env.value.clone(), function() {
+        this.scope(argsEnv, function() {
+          result = e1.accept(self);
         });
+      });
 
-        // new environment with the function arguments
-        argsEnv = new Env(envUpdate);
-
-        // params should go on the current env *after* the copied env from
-        // when the fun was created so that the params have precedence
-        // closed-over env and params should also be poped after the function
-        // exits since inner funs should carry a ref on creation
-        this.scope(freeVars.clone(), function() {
-          this.scope(argsEnv, function() {
-            result = e1.accept(self);
-          });
-        });
-
-        return result;
-      };
+      return result;
     },
 
     // TODO can be done using call but constructing nodes
