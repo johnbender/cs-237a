@@ -246,10 +246,6 @@ F.evalAST = function(ast) {
       // the expression bound to it since these semantics are lazy
       var result = this.env.lookup(id.accept(this));
 
-      // if( result.accept ){
-      //   result = result.accept(this);
-      // }
-
       return result;
     },
 
