@@ -1,10 +1,12 @@
 F.evalAST = function(ast) {
-  var visitor, astObj;
+  var visitor, astObj, result;
 
   astObj = new window.Impl.Ast.create(ast);
   visitor = new window.Impl.Visitor();
 
-  return astObj.accept(visitor);
+  result = astObj.accept(visitor);
+
+  return (result && typeof result === "object") ? result.original : result;
 };
 
 (function() {
@@ -45,11 +47,11 @@ F.evalAST = function(ast) {
 
   // leaf nodes in the ast
   Ast.Leaf = function(value) {
-    this.value = value;
+    this.original = value;
   };
 
   Ast.Leaf.prototype.accept = function(){
-    return this.value;
+    return this.original;
   };
 
   // interior nodes in the AST
@@ -270,7 +272,7 @@ F.evalAST = function(ast) {
     },
 
     visitClosure: function(args, params, e1, env) {
-      var envUpdate, argsEnv, result, self;
+      var envUpdate, argsEnv, closureEnv, result, self;
 
       self = this;
       envUpdate = {};
@@ -291,6 +293,9 @@ F.evalAST = function(ast) {
         envUpdate[p.accept(self)] = args[i];
       });
 
+      // create new environment from the closure reference
+      closureEnv = env.accept(this).clone();
+
       // new environment with the function arguments
       argsEnv = new Env(envUpdate);
 
@@ -298,7 +303,7 @@ F.evalAST = function(ast) {
       // when the fun was created so that the params have precedence
       // closed-over env and params should also be poped after the function
       // exits since inner funs should carry a ref on creation
-      this.scope(env.value.clone(), function() {
+      this.scope(closureEnv, function() {
         this.scope(argsEnv, function() {
           result = e1.accept(self);
         });
