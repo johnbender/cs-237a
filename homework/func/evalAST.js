@@ -93,7 +93,7 @@ Impl.Env.prototype.lookup = function(key) {
 Impl.Env.prototype.top = function() {
   var next = this;
 
-  while(next.parent) {
+  while(! next.top ) {
     next = next.parent;
   }
 
@@ -138,7 +138,6 @@ Impl.Visitor.prototype.scope = function(update, callback) {
   this.env = restore;
 };
 
-
 Impl.Visitor.prototype.checkType = function(e, typeName) {
   var v = e.accept(this);
 
@@ -149,6 +148,7 @@ Impl.Visitor.prototype.checkType = function(e, typeName) {
   return v;
 };
 
+// TODO this all sucks
 Impl.Visitor.checkType = function(typeName, fn) {
   return function(e1, e2) {
     var l, r;
@@ -218,11 +218,22 @@ Impl.Visitor.prototype.visitIf = function(e1, e2, e3) {
 Impl.Visitor.prototype.visitId = function(id) {
   // get the id (should be a Leaf) and get the value of
   // the expression bound to it since these semantics are lazy
-  return this.env.lookup(id.accept(this)).accept(this);
+  var result = this.env.lookup(id.accept(this));
+
+  if( typeof result == "object" ){
+    result = result.accept(this);
+  }
+
+  return result;
 };
 
 Impl.Visitor.prototype.visitCall = function(e1) {
-  var args = Array.prototype.slice.call(arguments, 1);
+  var self = this, args = Array.prototype.slice.call(arguments, 1);
+
+  // strict argument eval
+  args = args.map(function(a) {
+    return a.accept(self);
+  });
 
   return e1.accept(this).apply(this, args);
 };
@@ -241,7 +252,7 @@ Impl.Visitor.prototype.visitFun = function(params, e1) {
     if( args.length != params.node.length ){
       throw new Error(
         "Function call expected "
-          + params.length
+          + params.node.length
           + " params but got "
           + args.length
       );
@@ -277,7 +288,7 @@ Impl.Visitor.prototype.visitLet = function(id, e1, e2) {
   idString = id.accept(this);
   envUpdate = {};
 
-  envUpdate[idString] = e1;
+  envUpdate[idString] = e1.accept(this);
 
   letEnv = new Impl.Env(envUpdate);
 
