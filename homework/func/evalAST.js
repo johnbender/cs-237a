@@ -159,7 +159,7 @@ F.evalAST = function(ast) {
 
     scope: function(opts) { //update, parent, callback) {
       // add a new extension to the environment
-      var parent, restore;
+      var parent, restore, result;
 
       restore = this.env;
 
@@ -167,10 +167,12 @@ F.evalAST = function(ast) {
       this.env = opts.parent.append(new opts.parent.constructor(opts.update));
 
       // invoke the callback with the updated env
-      opts.callback.call(this);
+      result = opts.expression.accept(this);
 
       // restore the previous env
       this.env = restore;
+
+      return result;
     },
 
     checkType: function(e, typeName) {
@@ -240,7 +242,6 @@ F.evalAST = function(ast) {
     visitId : function(id) {
       // get the id (should be a Leaf) and get the value of
       // the expression bound to it since these semantics are lazy
-
       var result = this.env.lookup(id.accept(this));
 
       return result;
@@ -301,12 +302,10 @@ F.evalAST = function(ast) {
       // when the fun was created so that the params have precedence
       // closed-over env and params should also be poped after the function
       // exits since inner funs should carry a ref on creation
-      this.scope({
+      result = this.scope({
         update: envUpdate,
         parent: closureEnv,
-        callback: function() {
-          result = e1.accept(this);
-        }
+        expression: e1
       });
 
       return result;
@@ -321,12 +320,10 @@ F.evalAST = function(ast) {
 
       envUpdate[idString] = e1.accept(this);
 
-      this.scope({
+      result = this.scope({
         update: envUpdate,
         parent: this.env,
-        callback: function() {
-          result = e2.accept(this);
-        }
+        expression: e2
       });
 
       return result;
