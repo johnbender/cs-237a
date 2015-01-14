@@ -88,7 +88,6 @@ F.evalAST = function(ast) {
   };
 
 
-
   // environment tracking
   function Env(extension, parent){
     this.parent = parent;
@@ -158,15 +157,17 @@ F.evalAST = function(ast) {
   // all visit methods
   extend(Visitor.prototype, {
 
-    scope: function(update, callback) {
+    scope: function(opts) { //update, parent, callback) {
       // add a new extension to the environment
-      var restore = this.env;
+      var parent, restore;
+
+      restore = this.env;
 
       // extend the current environment
-      this.env = this.env.append(update);
+      this.env = opts.parent.append(new opts.parent.constructor(opts.update));
 
       // invoke the callback with the updated env
-      callback.call(this);
+      opts.callback.call(this);
 
       // restore the previous env
       this.env = restore;
@@ -239,6 +240,7 @@ F.evalAST = function(ast) {
     visitId : function(id) {
       // get the id (should be a Leaf) and get the value of
       // the expression bound to it since these semantics are lazy
+
       var result = this.env.lookup(id.accept(this));
 
       return result;
@@ -267,14 +269,13 @@ F.evalAST = function(ast) {
         'closure',
         params.original,
         e.original,
-        this.env
+        freeVars
       ]);
     },
 
     visitClosure: function(args, params, e1, env) {
-      var envUpdate, argsEnv, closureEnv, result, self;
+      var envUpdate, closureEnv, result;
 
-      self = this;
       envUpdate = {};
 
       // TODO sort out the "arrayness" of the params nodes
@@ -294,19 +295,18 @@ F.evalAST = function(ast) {
       });
 
       // create new environment from the closure reference
-      closureEnv = env.accept(this).clone();
-
-      // new environment with the function arguments
-      argsEnv = new Env(envUpdate);
+      closureEnv = env.accept(this);
 
       // params should go on the current env *after* the copied env from
       // when the fun was created so that the params have precedence
       // closed-over env and params should also be poped after the function
       // exits since inner funs should carry a ref on creation
-      this.scope(closureEnv, function() {
-        this.scope(argsEnv, function() {
-          result = e1.accept(self);
-        });
+      this.scope({
+        update: envUpdate,
+        parent: closureEnv,
+        callback: function() {
+          result = e1.accept(this);
+        }
       });
 
       return result;
@@ -314,17 +314,19 @@ F.evalAST = function(ast) {
 
     // TODO can be done using call but constructing nodes
     visitLet : function(id, e1, e2) {
-      var idString, result, letEnv, envUpdate = {}, self = this;
+      var idString, result, letEnv, envUpdate;
 
       idString = id.accept(this);
       envUpdate = {};
 
       envUpdate[idString] = e1.accept(this);
 
-      letEnv = new Env(envUpdate);
-
-      this.scope(letEnv, function() {
-        result = e2.accept(this);
+      this.scope({
+        update: envUpdate,
+        parent: this.env,
+        callback: function() {
+          result = e2.accept(this);
+        }
       });
 
       return result;
