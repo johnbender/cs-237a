@@ -317,24 +317,36 @@ F.evalAST = function(ast) {
       return closure.accept(this, args);
     },
 
-    visitFun : function(params, e) {
+    visitFun : function(params, e, env) {
       // NOTE we rely on the fact that the object ref to
       // this.env will show updates when that becomes relevant
       return Ast.create([
         'closure',
-        params.original,
+        params.original ? params.original : params,
         e.original,
-        this.env
+        env ? this.env.append(env) : this.env
       ]);
     },
 
     visitClosure: function(args, params, e1, env) {
-      var envUpdate, closureEnv, result;
+      var envUpdate, closureEnv, result, last, paramIds;
 
       envUpdate = {};
+      paramIds = params.original;
 
-      // TODO sort out the "arrayness" of the params nodes
-      if( args.length != params.node.length ){
+      // curry
+      if( args.length < params.node.length ){
+        // create an extension for the current environment with the args
+        args.map(function(a, i) {
+          envUpdate[paramIds[i]] = a;
+          last = i + 1;
+        });
+
+        return this.visitFun(paramIds.slice(last), e1, new Env(envUpdate));
+      }
+
+      // too many args
+      if( args.length > params.node.length ){
         throw new Error(
           "Function call expected "
             + params.node.length
@@ -343,10 +355,8 @@ F.evalAST = function(ast) {
         );
       }
 
-      // create an extension for the current environment with the args
-      // TODO sort out the "arrayness" of the params nodes
-      params.node.forEach(function(p, i) {
-        envUpdate[p.accept(self)] = args[i];
+      args.map(function(a, i) {
+        envUpdate[paramIds[i]] = a;
       });
 
       // create new environment from the closure reference
