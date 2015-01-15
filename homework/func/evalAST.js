@@ -61,6 +61,11 @@ F.evalAST = function(ast) {
 
     this.node = Ast.wrapAll(ast);
 
+    // empty args list
+    if(ast.length == 0){
+      return;
+    }
+
     // we expect the first node to be a leaf/string
     this.nodeType = this.original[0];
 
@@ -95,7 +100,7 @@ F.evalAST = function(ast) {
   };
 
   extend(Env.prototype, {
-    lookup: function(key) {
+    get: function(key) {
       if( this.extension.hasOwnProperty(key) ) {
         return this.extension[key];
       }
@@ -104,7 +109,23 @@ F.evalAST = function(ast) {
         throw new Error("The identifier `" + key + "` is undefined" );
       }
 
-      return this.parent.lookup(key);
+      return this.parent.get(key);
+    },
+
+    set: function(key, value) {
+      if( this.extension.hasOwnProperty(key) ){
+        return this.extension[key] = value;
+      }
+
+      if( ! this.parent ){
+        return;
+      }
+
+      return this.parent.set(key, value);
+    },
+
+    add: function(key, value) {
+      return this.extension[key] = value;
     },
 
     top: function() {
@@ -179,8 +200,6 @@ F.evalAST = function(ast) {
       var v = e.accept(this);
 
       if( typeof v !== typeName ){
-        debugger;
-
         throw new Error( "expression should be of type: " + typeName );
       }
 
@@ -244,9 +263,38 @@ F.evalAST = function(ast) {
     visitId : function(id) {
       // get the id (should be a Leaf) and get the value of
       // the expression bound to it since these semantics are lazy
-      var result = this.env.lookup(id.accept(this));
+      var result = this.env.get(id.accept(this));
 
       return result;
+    },
+
+    visitCons: function(e1, e2) {
+      var rest = e2.accept(this);
+
+      // TODO ugh
+      rest = (rest && rest.original) || rest;
+
+      return Ast.create([
+        "cons",
+        e1.accept(this),
+        rest
+      ]);
+    },
+
+    visitSeq: function(e1, e2) {
+      e1.accept(this);
+      return e2.accept(this);
+    },
+
+    visitSet: function(e1, e2) {
+      var id, value, set;
+
+      id = e1.accept(this);
+      value = e2.accept(this);
+
+      set = this.env.set(id, value);
+
+      return set ? set : this.env.add(id, value);
     },
 
     visitCall : function(e1) {
@@ -261,6 +309,10 @@ F.evalAST = function(ast) {
 
       // eval the fun or id to get the closure
       closure = e1.accept(this);
+
+      if( closure.nodeType !== "closure" ){
+        throw new Error("Cannot call `" + closure + "` with `" + args + "`");
+      }
 
       return closure.accept(this, args);
     },
