@@ -211,6 +211,10 @@ F.evalAST = function(ast) {
     }),
 
     'visit/': Visitor.checkType("number", function(l, r){
+      if( r == 0 ) {
+        throw new Error( "attempted to divide " + l + " by zero" );
+      }
+
       return l / r;
     }),
 
