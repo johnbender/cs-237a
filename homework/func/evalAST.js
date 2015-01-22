@@ -451,7 +451,27 @@ F.evalAST = function(ast) {
       }
 
       return Ast.create(this.consFromList(results));
-    }
+    },
+
+    visitMatch: function(match) {
+      var clauses, check, e, envUpdate;
+
+      clauses = Array.prototype.slice.call(arguments, 1);
+
+      while( clauses.length > 0 ){
+        check = clauses.shift().accept(this);
+        e = clauses.shift();
+
+        if( check == "_" || check == match.accept(this) ){
+          // TODO scope stuff from the check
+          return e.accept(this);
+        }
+      }
+
+      throw new Error( "no matching clause" );
+    },
+
+    'visit_': function() { return "_" }
   });
 
   window.Impl = {

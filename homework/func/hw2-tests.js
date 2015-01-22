@@ -26,6 +26,25 @@ tests(
     expected: ['cons', 9, ['cons', 0, ['cons', 6, null]]]
   },
   {
+    name: 'simple match failure',
+    code: 'match 0 with\n' +
+      '  1 -> 1 \n',
+    shouldThrow: true
+  },
+  {
+    name: 'simple match taut',
+    code: 'match 1 with\n' +
+      '  1 -> 1 \n',
+    expected: 1
+  },
+  {
+    name: 'simple match otherwise',
+    code: 'match 0 with\n' +
+      '  1 -> 1 \n' +
+      '  | _ -> 2 \n',
+    expected: 2
+  },
+  {
     name: 'match',
     code: 'let lst = [1;2::3;4] in\n' +
           '  match lst with\n' +
