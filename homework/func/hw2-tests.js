@@ -45,7 +45,21 @@ tests(
     expected: 2
   },
   {
-    name: 'match',
+    name: 'simple destruct match',
+    code: 'let lst = [1;2] in\n' +
+          '  match lst with\n' +
+          '    [1;x] -> 10 + x',
+    expected: 12
+  },
+  {
+    name: 'scoped simple destruct match',
+    code: 'let y = 1 in\n' +
+          '  match [y;2] with\n' +
+          '    [1;x] -> 10 + x',
+    expected: 12
+  },
+  {
+    name: 'complex destruct match',
     code: 'let lst = [1;2::3;4] in\n' +
           '  match lst with\n' +
           '    [1;x::3;y] -> y * 10 + x',

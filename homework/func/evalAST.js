@@ -273,14 +273,14 @@ F.evalAST = function(ast) {
     },
 
     visitCons: function(e1, e2) {
-      var rest = e2.accept(this);
+      var rest = e2.accept(this), val = e1.accept(this);
 
       // TODO ugh
       rest = (rest && rest.original) || rest;
 
       return Ast.create([
         "cons",
-        e1.accept(this),
+        val.original ? val.original : val,
         rest
       ]);
     },
@@ -453,18 +453,84 @@ F.evalAST = function(ast) {
       return Ast.create(this.consFromList(results));
     },
 
-    visitMatch: function(match) {
-      var clauses, check, e, envUpdate;
+    isVal: function(node) {
+      return !node.original;
+    },
 
+    matchRecur: function(match, against) {
+      var env = {}, result;
+
+      if(against == null && match || against && match == null ){
+        debugger;
+        return false;
+      }
+
+      if(match == null && against == null ){
+        debugger;
+        return env;
+      }
+
+      if( match.original == against || match == against){
+        return {};
+      }
+
+      if( this.isVal(match) && match !== against ){
+        return false;
+      }
+
+      // if there's a cons in the second positon of both recurse
+      if( match.node[1].nodeType == 'cons' && against[1][0] == 'cons' ){
+        debugger;
+        result = this.matchRecur(match.node[1], against[1]);
+
+        if( ! result ){
+          return false;
+        }
+
+        extend(env, result);
+      } else if( against[1][0] == 'id' ) {
+        debugger;
+        //otherwise if there's an id expecting assignment grab that
+        env[against[1][1]] = match.node[1].accept(this);
+      }
+
+      // if there's an identifer as the second element of the match
+      if( against[2] && against[2][0] == 'id' ){
+        debugger;
+        env[against[2][1]] = match.node[2].accept(this);
+        return env;
+      }
+
+      // continue down the list match
+      debugger;
+      result = extend(env, this.matchRecur(match.node[2], against[2]));
+
+      if( ! result ){
+        return false;
+      }
+
+      debugger;
+      return extend(env, result);
+    },
+
+    visitMatch: function(match) {
+      var clauses, against, e, envUpdate, matchVal, destr;
+
+      matchVal = match.accept(this);
       clauses = Array.prototype.slice.call(arguments, 1);
 
       while( clauses.length > 0 ){
-        check = clauses.shift().accept(this);
+        against = clauses.shift().original;
         e = clauses.shift();
+        destr = this.matchRecur(matchVal, against);
 
-        if( check == "_" || check == match.accept(this) ){
+        if( against == "_" || destr ){
           // TODO scope stuff from the check
-          return e.accept(this);
+          return this.scopedVisit({
+            update: destr,
+            parent: this.env,
+            expression: e
+          });
         }
       }
 
