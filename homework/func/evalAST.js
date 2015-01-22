@@ -537,7 +537,51 @@ F.evalAST = function(ast) {
       throw new Error( "no matching clause" );
     },
 
-    'visit_': function() { return "_" }
+    'visit_': function() { return "_" },
+
+    visitDelay: function(delayed) {
+      // NOTE we rely on the fact that the object ref to
+      // this.env will show updates when that becomes relevant
+      debugger;
+      return Ast.create([
+        'delayed',
+        [],
+        delayed.original,
+        this.env
+      ]);
+    },
+
+    visitDelayed: function() {
+      return Ast.create([
+        'delayed',
+        [],
+        arguments[1].original,
+        arguments[2].original
+      ]);
+    },
+
+    visitForce: function(delay) {
+      var closureEnv, result = delay.accept(this);
+
+      if( result.nodeType !== "delayed" ){
+        throw new Error("trying to force a non-delay");
+      }
+
+      // create new environment from the closure reference
+      closureEnv = result.node[3].accept(this);
+
+      // params should go on the current env *after* the copied env from
+      // when the fun was created so that the params have precedence
+      // closed-over env and params should also be poped after the function
+      // exits since inner funs should carry a ref on creation
+      result = this.scopedVisit({
+        update: {},
+        parent: closureEnv,
+        expression: result.node[2]
+      });
+
+      return result;
+    }
   });
 
   window.Impl = {

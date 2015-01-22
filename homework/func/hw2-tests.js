@@ -137,7 +137,17 @@ tests(
     shouldThrow: true
   },
   {
-    name: 'delay and force',
+    name: 'delay and force simple',
+    code: 'force (delay 2)',
+    expected: 2
+  },
+  {
+    name: 'delay and force scoped',
+    code: 'force (let x = 1 in delay x)',
+    expected: 1
+  },
+  {
+    name: 'delay and force complex',
     code: 'let take = fun n s ->\n' +
           '  match n with\n' +
           '    0 -> nil\n' +
