@@ -404,6 +404,53 @@ F.evalAST = function(ast) {
       });
 
       return result;
+    },
+
+    consFromList: function(list) {
+      var result = null;
+
+      list.reverse().forEach(function(e){
+        result = ['cons', e, result];
+      });
+
+      return result;
+    },
+
+    check: function(pred, env) {
+      return this.scopedVisit({
+        update: env,
+        parent: this.env,
+        expression: pred
+      });
+    },
+
+    visitListComp: function(e1, v, gen, pred) {
+      var genVal, envUpdate, results;
+
+      genVal = gen.accept(this);
+      envUpdate = {};
+      results = [];
+
+      if( genVal.nodeType !== 'cons' ){
+        throw new Error( "the generator expression must be a cons list" );
+      }
+
+      while(genVal !== null ){
+        envUpdate[v.accept(this)] = genVal.node[1].accept(this);
+
+        // if there are predicates one of them fails skip
+        if( !pred || this.check(pred, envUpdate) ){
+          results.push(this.scopedVisit({
+            update: envUpdate,
+            parent: this.env,
+            expression: e1
+          }));
+        }
+
+        genVal = genVal.node[2].accept(this);
+      }
+
+      return Ast.create(this.consFromList(results));
     }
   });
 

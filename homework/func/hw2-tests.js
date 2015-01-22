@@ -68,10 +68,40 @@ tests(
     expected: ['cons', 0, ['cons', 2, ['cons', 4, ['cons', 6, ['cons', 8, null]]]]]
   },
   {
-    name: 'list comprehension w/ predicate',
+    name: 'list comprehension w/ scoped var',
+    code: 'let y = 3 in\n' +
+          '  [x * y | x <- [1;2]]',
+    expected: ['cons', 3, ['cons', 6, null]]
+  },
+  {
+    name: 'list comprehension w/ scoped var can write to state',
+    code: 'let y = 3 in\n'
+      + '  [y:= 1; x * y | x <- [1;2]]; y',
+    expected: 1
+  },
+  {
+    name: 'list comprehension w/ shadow var',
+    code: 'let x = 10 in let y = 3 in\n'
+      + '  [x * y | x <- [1;2]]',
+    expected: ['cons', 3, ['cons', 6, null]]
+  },
+  {
+    name: 'list comprehension with predicate',
     code: 'let nats = [0;1;2;3;4] in\n' +
           '  [x * 2 | x <- nats, x % 2 = 0]',
     expected: ['cons', 0, ['cons', 4, ['cons', 8, null]]]
+  },
+  {
+    name: 'list comprehension with compound predicate',
+    code: 'let nats = [0;1;2;3;4] in\n' +
+          '  [x * 2 | x <- nats, x % 2 = 0 && x = 4]',
+    expected: ['cons', 8, null]
+  },
+  {
+    name: 'list comprehension w/ bad generator',
+    code: 'let nats = 4 in\n' +
+          '  [x * 2 | x <- nats]',
+    shouldThrow: true
   },
   {
     name: 'delay and force',
@@ -85,4 +115,3 @@ tests(
     expected:  ['cons', 1, ['cons', 1, ['cons', 1, ['cons', 1, ['cons', 1, null]]]]]
   }
 );
-
