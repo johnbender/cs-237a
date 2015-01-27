@@ -457,16 +457,15 @@ F.evalAST = function(ast) {
       return !node.original;
     },
 
+    // TODO literally the most disapointing code I've written in the last two years
     matchRecur: function(match, against) {
       var env = {}, result;
 
       if(against == null && match || against && match == null ){
-        debugger;
         return false;
       }
 
       if(match == null && against == null ){
-        debugger;
         return env;
       }
 
@@ -480,7 +479,6 @@ F.evalAST = function(ast) {
 
       // if there's a cons in the second positon of both recurse
       if( match.node[1].nodeType == 'cons' && against[1][0] == 'cons' ){
-        debugger;
         result = this.matchRecur(match.node[1], against[1]);
 
         if( ! result ){
@@ -488,28 +486,24 @@ F.evalAST = function(ast) {
         }
 
         extend(env, result);
-      } else if( against[1][0] == 'id' ) {
-        debugger;
+      } else if( against[1] && against[1][0] == 'id' ) {
         //otherwise if there's an id expecting assignment grab that
         env[against[1][1]] = match.node[1].accept(this);
       }
 
       // if there's an identifer as the second element of the match
       if( against[2] && against[2][0] == 'id' ){
-        debugger;
         env[against[2][1]] = match.node[2].accept(this);
         return env;
       }
 
       // continue down the list match
-      debugger;
       result = extend(env, this.matchRecur(match.node[2], against[2]));
 
       if( ! result ){
         return false;
       }
 
-      debugger;
       return extend(env, result);
     },
 
@@ -542,7 +536,6 @@ F.evalAST = function(ast) {
     visitDelay: function(delayed) {
       // NOTE we rely on the fact that the object ref to
       // this.env will show updates when that becomes relevant
-      debugger;
       return Ast.create([
         'delayed',
         [],

@@ -156,5 +156,57 @@ tests(
           'let ones = 1::delay ones in\n' +
           '  take 5 ones',
     expected:  ['cons', 1, ['cons', 1, ['cons', 1, ['cons', 1, ['cons', 1, null]]]]]
+  },
+  {
+    name: 'scarry',
+  code: 'let head = fun s ->\n'
+      + '  match s with\n'
+      + '    x::_ -> x\n'
+      + 'in\n'
+      + '\n'
+      + 'let tail = fun s ->\n'
+      + '  match s with\n'
+      + '    _::dxs -> force dxs    \n'
+      + 'in\n'
+      + '\n'
+      + 'let take = fun n s ->\n'
+      + '  match n with\n'
+      + '    0 -> null\n'
+      + '  | _ -> (head s)::take (n - 1) (tail s)\n'
+      + 'in\n'
+      + '\n'
+      + 'let ones = 1::delay ones\n'
+      + 'in\n'
+      + '\n'
+      + 'let sum = fun s1 s2 ->\n'
+      + '  (head s1) + (head s2)::delay (sum (tail s1) (tail s2))\n'
+      + 'in\n'
+      + '\n'
+      + 'let fib = 1::delay (1::delay (sum fib (tail fib)))\n'
+      + 'in\n'
+      + '\n'
+      + 'let filterMultiples = fun n s ->\n'
+      + '  if head s % n = 0\n'
+      + '  then filterMultiples n (tail s)\n'
+      + '  else (head s)::delay (filterMultiples n (tail s))\n'
+      + 'in\n'
+      + '\n'
+      + 'let sieve = fun s ->\n'
+      + '  (head s)::delay (sieve (filterMultiples (head s) (tail s))) \n'
+      + 'in\n'
+      + '\n'
+      + 'let intsFrom = fun n -> n::delay (intsFrom (n + 1))\n'
+      + 'in\n'
+      + '\n'
+      + 'let primes = sieve (intsFrom 2)\n'
+      + 'in\n'
+      + '\n'
+      + 'let first = fun p s ->\n'
+      + '  if p (head s)\n'
+      + '  then head s\n'
+      + '  else first p (tail s)\n'
+      + 'in\n'
+      + 'first (fun x -> x > 1002) primes',
+    expected: 1009
   }
 );
