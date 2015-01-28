@@ -1,0 +1,245 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="resources/codemirror.css"></link>
+    <link rel="stylesheet" href="resources/common.css"></link>
+    <link rel="stylesheet" href="resources/tests.css"></link>
+
+    <script src="resources/helpers.js"></script>
+    <script src="test-harness.js"></script>
+  </head>
+  <body>
+    <everything>
+      <header>
+        <part>Part II:</part>
+        <descr>Pattern Matching</descr>
+        <detail>(internal DSL)</detail>
+      </header>
+      <abstract>
+        In Part II of this class, we will "prototype" an internal domain-specific language for
+        pattern matching in JavaScript.
+      </abstract>
+      <section>
+        <sectionHeader>
+          <span>Introduction</span>
+        </sectionHeader>
+        <p>
+          It's easy to make mistakes when you're programming in JavaScript. Take Homeworks #1 and #2, for
+          example: did you spend a fair amount of time debugging your code because of silly mistakes like this?
+          <codeBlock>var node = &hellip;;
+switch (node[0]) {
+  &hellip;
+  case "id":
+    var name = node[2];
+    &hellip;
+  &hellip;
+}</codeBlock>
+          Here, the programmer meant to extract <code>name</code> from the 2nd element of an identifier node, which
+          is represented as an array, e.g., <code>["id", "x"]</code>. But JavaScript's array indices are 0-based, so
+          the programmer should have written
+          <codeBlock>var name = node[1];</codeBlock>
+          instead of
+          <codeBlock>var name = node[2];</codeBlock>
+        </p>
+        <p>
+          <b>(We interrupt this program to bring you another brief rant about JavaScript.)</b>
+        </p>
+        <p>
+          In any reasonable language, trying to access an array with an invalid index would throw an exception to let
+          you know that something went wrong. Not JavaScript, though! Perhaps in an effort to be amateur
+          programmer-friendly, JavaScript will evaluate <code>node[2]</code> to the special value
+          <code>undefined</code> and carry on as if nothing is wrong. So the program won't fail at the statement above,
+          which would have made it easy to spot the bug and fix it. Instead, it will fail at a later time,
+          when you try to do something with <code>name</code>. And the resulting error message won't be very helpful
+          because the code that caused that particular error had nothing to do with the bug.
+        </p>
+        <p>
+          <b>(Now back to our regularly-scheduled program.)</b>
+        </p>
+        <p>
+          One way to avoid this kind of mistake is to program in a language that supports pattern matching, like the
+          one you implemented in HW #2. But changing languages is not always an option:
+          <ul>
+            <li>It could be that you're using several libraries that are only available in JavaScript, and it's too
+              much effort to reimplement all of that functionality in another language;
+            <li>Or maybe your boss isn't happy with the idea of an "obscure" language creeping into the company's code
+              base, because eventually you'll move on and he'll have to find someone else who can maintain the code.*
+              <sidebar>* By "obscure" we mean anything that's not Java or C++... <i>maybe</i> C#, too.</sidebar>
+              This kind of thing is a real concern in industry.
+          </ul>
+        </p>
+        <p>
+          An increasingly popular solution to this problem is to provide the desired abstraction in the form of an
+          <i>internal domain-specific language (DSL)</i>. This name is important, so let's break it down:
+          <ul>
+            <li><i>Internal</i> means that it lives inside a host language, as opposed to being a language that you can
+              use on its own.
+            <li><i>Domain-specific</i> means that it's focused on a particular problem, as opposed to general-purpose.
+          </ul>
+        </p>
+        <p>
+          Internal DSLs (usually) don't have their own syntax; you use them via a carefully-designed API in the host
+          language that feels somewhat natural to write, and makes for readable code. Designing such an API is not
+          easy, and some host languages are better than others. Smalltalk, Ruby, Haskell, and Scala are all reasonably
+          good host languages. C not so much, though its macros can be used to implement some limited kinds of DSLs.
+          Java is basically awful as a host language.
+        </p>
+        <p>
+          So what should you look for in a host language?
+          <ul>
+            <li>It helps if the language is <b>
+              <a href="http://en.wikipedia.org/wiki/Expression-oriented_programming_language">expression-oriented</a>
+              </b>, i.e., if nearly everything the programmer ever writes is an expression that yields a value.
+	    The uniformity of this style of language makes it easier to extend, in contrast to a language that has rigid
+	    distinctions among different syntactic categories (e.g., between expressions and statements).
+            <li><b>Support for closures, especially if the syntax is lightweight.</b> First-class functions are critical
+	      for implementing new control structures, new kinds of modularity mechanisms, and more.  See the original
+	    <a href="http://library.readscheme.org/page1.html">Lambda the Ultimate...</a> papers for good examples
+	    of this kind of thing.
+            <li><b>Operator overloading.</b> If you were using an internal DSL for matrix arithmetic, would you rather
+              have to write <code>aMatrix.times(anotherMatrix)</code> or <code>aMatrix * anotherMatrix</code>?
+            <li><b>Garbage collection and finalizers</b> make it possible for the implementation of a DSL to clean up
+              after itself (deallocate data structures, close files, etc.) without burdening the programmer.
+          </ul>
+        </p>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Homework #3: An Internal DSL for Pattern Matching</span>
+        </sectionHeader>
+        <p>
+          <due>
+            <b>Due at 11:30pm on Wednesday, February 4.</b>
+            Turn in just your <tt>match.js</tt> file through the course page on CCLE.
+          </due>
+        </p>
+        <p>
+          For homework #3, you'll implement an internal DSL for pattern matching in JavaScript. Here's an example of
+          how this DSL could be used to simplify your interpreter from the previous homeworks.
+	  <codeBlock>match(ast,
+  when(isPrimValue), function(v) { return v; },
+  ['id', _],         function(name) { return env.lookup(name); },
+  ['+', _, _],       function(x, y) { return ev(x) + ev(y); },
+  &hellip;
+);</codeBlock>
+          Pattern matching with this DSL may not be as nice as doing it in a language that has native support for
+          pattern matching, but it sure beats deconstructing the objects manually. The resulting code is both more
+          readable and less error-prone.
+        </p>
+        <h2>Description of the DSL</h2>
+        <h3>The <code>match</code> function</h3>
+        <p>
+          Our DSL consists of a <code>match</code> function that takes as arguments a value to be matched, followed
+          by zero or more (pattern, function) pairs:
+          <codeBlock>match(value, pat1, fun1, pat2, fun2, ...)</codeBlock>
+          <code>match</code> will try to match the value with each of the patterns, in left-to-right order. When it
+          finds the first pattern that matches the value, <code>match</code> will call that pattern's corresponding
+          function and return the result of that call. If none of the patterns match the value, <code>match</code> will
+          throw an exception like this:
+          <codeBlock>throw new Error("match failed");</codeBlock>
+        </p>
+        <h3>Patterns</h3>
+        <p>
+          A pattern in our DSL serves two purposes:
+          <ul>
+            <li>It tells you whether it matches a value.
+            <li>On a successful match, it also breaks down the value into zero or more <i>bindings</i> that will be
+              passed as arguments to the pattern's corresponding function. Note that the <i>arity</i> (i.e., the
+              number of arguments) of this function must be the same as the number of bindings generated by the
+              pattern.
+          </ul>
+        </p>
+        <p>
+          Here is a list of the patterns that are supported in our DSL:
+          <ul>
+            <li>The <b>wildcard pattern</b> <code>_</code> matches any value, and
+  produces a single binding that is equal to that value.</li>
+            <li>An array of patterns can also be used as a pattern. The <b>array pattern</b>
+              <code>[</code><i>p<sub>1</sub></i><code>, </code><i>p<sub>2</sub></i><code>, </code>&hellip;<code>, </code>
+              <i>p<sub>n</sub></i><code>]</code> will match any array whose contents are matched by
+              <i>p<sub>1</sub></i>, <i>p<sub>2</sub></i>, &hellip;, <i>p<sub>n</sub></i>, and if so, will produce all
+              of the bindings that were produced by its sub-patterns. E.g.,
+              <ul>
+                <li><code>match(["+", 5, 7], ["+", _, _], function(x, y) { return x + y; })</code> evaluates to
+                  <code>12</code>.
+                <li><code>match(["+", 5], ["+", _, _], &hellip;)</code> throws a <i>match failed</i> exception
+                  because there is no value to be matched by the second <code>_</code> pattern.
+                <li><code>match(["+", 5, 7], ["+", _], &hellip;)</code> throws a <i>match failed</i> exception
+                  because there is no pattern to match the 7.
+	      </ul></li>
+            <li>The <b>predicate pattern</b> <code>when(</code> <i>f</i> <code>)</code>, where <i>f</i> is a one-argument
+              function, matches any value <i>v</i> for which <i>f</i><code>(</code><i>v</i><code>)</code> is
+              <i>truthy</i>. On a successful match, a predicate pattern produces a single binding that is equal to the
+              value that it matched.</li>
+            <li>A limitation of the array patterns described above is that the programmer has to statically know the
+              size of the array being matched. To make array patterns more flexible, we introduce the
+              <code>many(</code> <i>p</i> <code>)</code> pattern, which can only appear inside an array pattern.
+              This pattern matches zero or more values that are matched by <i>p</i> and produces a single binding that
+              is an array of the bindings produced from all of those matches. E.g.,
+              <ul>
+                <li><code>match(["sum", 1, 2, 3, 4], ["sum", many(when(isNumber))], function(nums) { &hellip; })</code>
+                  evaluates to <code>10</code>, assuming the body of the function above sums the elements of the
+                  <code>nums</code> array.</li>
+                <li><code>match([1, 2, 3, "and", 4], [many(_), "and", _], function(xs, x) { &hellip; })</code>
+                  throws a <i>match failed</i> exception because the <code>many(_)</code> will consume all of
+                  the elements of the array, and there will be no value to be matched by the <code>"and"</code>
+                  pattern.</li>
+                <li><code>match([1, 2, 3, "and", 4], [many(when(isNumber)), "and", _], function(xs, x) { &hellip; })</code>
+                  does match, with <code>xs</code> bound to <code>[1,2,3]</code> and <code>x</code> bound to
+                  <code>4</code>.</li>
+              </ul>
+	      
+            <li>Any other value &mdash; e.g., <code>42</code>, <code>"foo"</code>, and <code>undefined</code> &mdash;
+              can be used as a <b>literal pattern</b>, i.e., a pattern that matches any value that is equal
+              (<code>===</code>) to it. Literal patterns don't produce any bindings.</li>
+          </ul>
+        </p>
+        <p>
+          Keep in mind that <tt>match</tt> is just a regular JavaScript function, which means that its arguments will
+          be evaluated before any pattern matching actually happens. This includes patterns like
+          <code>many(when(isNumber))</code>: they are plain old JavaScript expressions that will be evaluated to
+          values before entering the <tt>match</tt> function.
+        </p>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Getting Started, Unit Tests, etc.</span>
+        </sectionHeader>
+        <p>
+          Please do your work in a file called <a href="match.js"><code>match.js</code></a>.
+          Each time you refresh this page, that file is loaded by our test harness to run the unit tests below.
+          As in the previous homework assignments, you can add your own test cases by editing
+          <a href="tests.js"><code>tests.js</code></a>.
+        </p>
+        <script src="match.js"></script>
+        <script src="tests.js"></script>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Extra Credit</span>
+        </sectionHeader>
+        <p>
+          <ul>
+            <li>Extend our DSL with support for JSON / object patterns. This is as much of a design exercise as it is
+              an implementation exercise: you'll have to figure out a nice way to expose this feature to the
+              programmer (i.e., what should an object pattern look like?) and implement it.
+            <li>Design a better internal DSL for pattern matching in JavaScript. You don't necessarily have to
+              implement it, although doing so might get you some extra points. Either way, you'll have to convince us
+              that your design really is better!
+          </ul>
+        </p>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Recommended Reading</span>
+        </sectionHeader>
+        <p>
+          <ul>
+            <li>Gilad Bracha's <a href="http://gbracha.blogspot.com/2014/09/a-domain-of-shadows.html">excellent blog
+              post on the advantages of internal DSLs over external DSLs</a>.
+          </ul>
+        </p>
+      </section>
+    </everything>
+  </body>
+</html>
+
