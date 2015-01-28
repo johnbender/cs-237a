@@ -159,7 +159,7 @@ tests(
   },
   {
     name: 'scarry',
-  code: 'let head = fun s ->\n'
+    code: 'let head = fun s ->\n'
       + '  match s with\n'
       + '    x::_ -> x\n'
       + 'in\n'
@@ -208,5 +208,13 @@ tests(
       + 'in\n'
       + 'first (fun x -> x > 1002) primes',
     expected: 1009
+  },
+  {
+    name: 'list sum',
+    code: 'let sumList = fun l -> match l with\n'
+      + '    null -> 0\n'
+      + '    | x::xs => x + (sumlist xs) in\n'
+      + '  sumList [1;2;3]',
+    expected: 6
   }
 );
