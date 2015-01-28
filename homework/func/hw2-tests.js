@@ -213,8 +213,9 @@ tests(
     name: 'list sum',
     code: 'let sumList = fun l -> match l with\n'
       + '    null -> 0\n'
-      + '    | x::xs => x + (sumlist xs) in\n'
-      + '  sumList [1;2;3]',
+      + '    | x::xs -> x + (sumList xs)\n'
+      + 'in\n'
+      + 'sumList [1;2;3]',
     expected: 6
   }
 );
