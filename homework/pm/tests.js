@@ -28,6 +28,13 @@ tests(
     expected: 125
   },
   {
+    name: 'mismatched',
+    code: 'match(123,\n' +
+          '  _\n' +
+          ')',
+    shouldThrow: true
+  },
+  {
     name: 'literal pattern',
     code: 'match(123,\n' +
           '  42,  function() { return "aaa"; },\n' +
@@ -85,4 +92,3 @@ tests(
     shouldThrow: true
   }
 );
-
