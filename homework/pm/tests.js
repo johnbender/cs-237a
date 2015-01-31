@@ -83,6 +83,14 @@ tests(
     expected: 123
   },
   {
+    name: 'first match wins, direct match first',
+    code: 'match(123,\n' +
+          '  123,   function(x) { return x; },\n' +
+          '  _, function()  { return 4; }\n' +
+          ')',
+    expected: 123
+  },
+  {
     name: 'match failed',
     code: 'match(3,\n' +
           '  1,   function() { return 1; },\n' +

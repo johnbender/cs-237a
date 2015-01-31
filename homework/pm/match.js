@@ -1,7 +1,6 @@
 window._ = "placeholder";
 
 function isValue(e) {
-  debugger;
   if( typeof e === "number" ){
     return true;
   }
@@ -20,6 +19,10 @@ function match(value /* , pat1, fun1, pat2, fun2, ... */) {
     }
 
     if( isValue(value) && check === window._ ) {
+      return exec(value);
+    }
+
+    if( isValue(value) && check === value ){
       return exec(value);
     }
 
