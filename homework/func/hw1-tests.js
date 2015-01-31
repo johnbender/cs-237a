@@ -162,6 +162,11 @@ tests(
     expected: 4
   },
   {
+    name: 'fun and call scoped arg',
+    code: 'let x = 3 in (fun x y -> x + 1) x 1',
+    expected: 4
+  },
+  {
     name: 'passing too many args is not OK',
     code: '(fun x -> x + 1) 3 4',
     shouldThrow: true
