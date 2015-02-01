@@ -64,7 +64,7 @@ function match(value /* , pat1, fun1, pat2, fun2, ... */) {
     }
 
     wrappedV = !Array.isArray(value) ? [value] : value;
-    wrappedC = !Array.isArray(check) ? [check] : check;
+    wrappedC = !Array.isArray(value) ? [check] : check;
 
     // otherwise assume array
     bindings = matchArray(wrappedV, wrappedC, []);
