@@ -124,6 +124,16 @@ tests(
       +  ' return xs.reduce(function(list){ return (list.push(x), list) }, []);'
       + '})',
     expected: [4,4,4]
+  },
+  {
+    name: 'match undefined',
+    code: 'match(undefined, undefined, function(){ return "foo"; })',
+    expected: "foo"
+  },
+  {
+    name: 'match null',
+    code: 'match(null, null, function(){ return "foo"; })',
+    expected: "foo"
   }
 );
 

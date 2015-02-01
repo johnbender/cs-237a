@@ -80,8 +80,12 @@ function matchArray(value, check, bindings) {
   c = check.shift();
 
   // if either is undefined and they are not both undefined (value)
-  if( (c === undefined || v === undefined) && c !== v ){
-    return false;
+  if( c === undefined || v === undefined || c === null || v === null ) {
+    if( c == v ){
+      return bindings;
+    } else {
+      return false;
+    }
   }
 
   // the clause was a `when` and the pred doesn't match
@@ -137,7 +141,7 @@ function match(value /* , pat1, fun1, pat2, fun2, ... */) {
     check = clauses.shift();
     exec = clauses.shift();
 
-    if( !check || !exec ){
+    if( exec == undefined ){
       throw new Error("clauses are mismatched");
     }
 
