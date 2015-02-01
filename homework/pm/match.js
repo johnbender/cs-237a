@@ -1,3 +1,4 @@
+// TODO need something uniqe
 window._ = "wildcard";
 
 function when( pred ){
@@ -7,19 +8,19 @@ function when( pred ){
 }
 
 function many( pred ){
+  var newPred;
+
   // a `when` is used as the predicate
   if( pred.pred ){
-    pred = pred.pred;
+    newPred = pred.pred;
   }
 
-  if( Array.isArray(pred) ){
-    pred = function( value ) {
-      return matchArray(pred, value, []);
-    };
-  }
+  newPred = newPred || function( value ) {
+    return matchArray(value, [].slice.call(pred), []);
+  };
 
   return {
-    many: pred
+    many: newPred
   };
 }
 
@@ -30,7 +31,10 @@ function isValue(e) {
 }
 
 function matchMany(values, pred) {
-  var result = {
+  var predBindings, result;
+
+
+  result = {
     binding: [],
     rest: values
   };
@@ -38,8 +42,15 @@ function matchMany(values, pred) {
   while(values.length) {
     var v = values.shift();
 
-    if( pred(v) ){
-      result.binding.push(v);
+    predBindings = pred(v);
+
+    if( predBindings ){
+      if( predBindings.length ){
+        result.binding = result.binding.concat(predBindings);
+      } else {
+        result.binding.push(v);
+      }
+
       result.rest.unshift();
     } else {
       return result;
@@ -59,6 +70,10 @@ function matchArray(value, check, bindings) {
 
   v = value.shift();
   c = check.shift();
+
+  if( !c || !v ){
+    return false;
+  }
 
   // the clause was a `when` and the pred doesn't match
   if ( c.pred && !c.pred(v) ){
@@ -98,7 +113,7 @@ function matchArray(value, check, bindings) {
 
   // nested array should recurse with nested arrays and append the bindings
   if( !c.many && Array.isArray(v) ){
-    bindings.concat(matchArray(v, c, bindings));
+    bindings = bindings.concat(matchArray(v, c, bindings));
   }
 
   // otherwise we assume a literal match and proceed with the rest

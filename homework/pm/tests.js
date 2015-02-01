@@ -100,3 +100,6 @@ tests(
     shouldThrow: true
   }
 );
+
+// TODO test undefine literal match
+// TODO test combinations of array matching
