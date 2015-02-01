@@ -67,6 +67,13 @@ tests(
     expected: "[1,2,3,4,5,6]"
   },
   {
+    name: 'many wildcard',
+    code: 'match([[1, 2], [3, 4], [5, 6]],\n' +
+          '  [many(_)], function(pts) { return JSON.stringify(pts); }\n' +
+          ')',
+    expected: "[[1,2],[3,4],[5,6]]"
+  },
+  {
     name: 'when',
     code: 'match(5,\n' +
           '  when(greaterThan(8)), function(x) { return x + " is greater than 8"; },\n' +

@@ -11,8 +11,12 @@ function many( pred ){
   var newPred;
 
   // a `when` is used as the predicate
-  if( pred.pred ){
-    newPred = pred.pred;
+  newPred = pred.pred;
+
+  if( pred === window._ ) {
+    newPred = newPred || function( value ) {
+      return true;
+    };
   }
 
   newPred = newPred || function( value ) {
