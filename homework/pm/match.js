@@ -1,5 +1,11 @@
 window._ = "wildcard";
 
+function when( pred ){
+  return {
+    pred: pred
+  };
+}
+
 function isValue(e) {
   if( typeof e === "number" || typeof e === "string" ){
     return true;
@@ -26,8 +32,14 @@ function matchArray(value, check, bindings) {
   // wildcard binding
   if( isValue(v) && c === window._ ) {
     bindings.push(v);
-  } else if( isValue(v) && c !== v ){
+  } else if ( c.pred && !c.pred(v) ){
     return false;
+  } else if( isValue(v) && !c.pred && c !== v ){
+    return false;
+  }
+
+  if( c.pred && c.pred(v) ){
+    bindings.push(v);
   }
 
   // nested array should recurse with nested arrays and append the bindings
@@ -51,8 +63,8 @@ function match(value /* , pat1, fun1, pat2, fun2, ... */) {
       throw new Error("clauses are mismatched");
     }
 
-    wrappedV = isValue(value) ? [value] : value;
-    wrappedC = isValue(check) ? [check] : check;
+    wrappedV = !Array.isArray(value) ? [value] : value;
+    wrappedC = !Array.isArray(check) ? [check] : check;
 
     // otherwise assume array
     bindings = matchArray(wrappedV, wrappedC, []);
