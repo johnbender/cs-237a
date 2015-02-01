@@ -85,10 +85,10 @@ tests(
   {
     name: 'first match wins, direct match first',
     code: 'match(123,\n' +
-          '  123,   function(x) { return x; },\n' +
-          '  _, function()  { return 4; }\n' +
+          '  123,   function(x) { return 1; },\n' +
+          '  _, function()  { return x; }\n' +
           ')',
-    expected: 123
+    expected: 1
   },
   {
     name: 'match failed',

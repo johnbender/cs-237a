@@ -28,16 +28,27 @@ function matchArray(value, check, bindings) {
   v = value.shift();
   c = check.shift();
 
-
-  // wildcard binding
-  if( isValue(v) && c === window._ ) {
-    bindings.push(v);
-  } else if ( c.pred && !c.pred(v) ){
-    return false;
-  } else if( isValue(v) && !c.pred && c !== v ){
+  // the clause was a when and the pred doesn't match
+  // return no match
+  if ( c.pred && !c.pred(v) ){
     return false;
   }
 
+  // we're not looking at an array or object
+  // c is not a predicate
+  // c is not a wildcard
+  // the value and check don't match
+  // return no match
+  if( isValue(v) && !c.pred && c !== v && c !== window._ ){
+    return false;
+  }
+
+  // if it's a wild card add the binding regardless of value
+  if( c === window._ ) {
+    bindings.push(v);
+  }
+
+  // if we have a predicate and it matchs add the binding
   if( c.pred && c.pred(v) ){
     bindings.push(v);
   }
@@ -47,7 +58,7 @@ function matchArray(value, check, bindings) {
     bindings.concat(matchArray(v, c, bindings));
   }
 
-  // otherwise we assume a match and proceed
+  // otherwise we assume a literal match and proceed with the rest
   return matchArray(value, check, bindings);
 }
 
@@ -63,6 +74,7 @@ function match(value /* , pat1, fun1, pat2, fun2, ... */) {
       throw new Error("clauses are mismatched");
     }
 
+    // NOTE check is wrapped in concert with value
     wrappedV = !Array.isArray(value) ? [value] : value;
     wrappedC = !Array.isArray(value) ? [check] : check;
 
