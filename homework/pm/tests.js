@@ -105,6 +105,25 @@ tests(
           '  [3], function() { return 3; }\n' +
           ')',
     shouldThrow: true
+  },
+  {
+    name: 'many failed overconsume',
+    code: 'match([1, 2, 3, "and", 4], [many(_), "and", _], function(xs, x) { return false; })',
+    shouldThrow: true
+  },
+  {
+    name: 'many sum',
+    code: 'match(["sum", 1, 2, 3, 4], ["sum", many(when(isNumber))], function(nums) {'
+      + ' return nums.reduce(function(x, y){ return x + y });'
+      + '})',
+    expected: 10
+  },
+  {
+    name: 'many list split',
+    code: 'match([0, 0, 0, "and", 4], [many(when(isNumber)), "and", _], function(xs, x) {'
+      +  ' return xs.reduce(function(list){ return (list.push(x), list) }, []);'
+      + '})',
+    expected: [4,4,4]
   }
 );
 

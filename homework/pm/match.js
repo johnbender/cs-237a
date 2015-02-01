@@ -11,14 +11,18 @@ function many( pred ){
   var newPred;
 
   // a `when` is used as the predicate
-  newPred = pred.pred;
+  if( pred.pred ){
+    newPred = pred.pred;
+  }
 
+  // a wildcard is used as a predicate
   if( pred === window._ ) {
-    newPred = newPred || function( value ) {
+    newPred = function( value ) {
       return true;
     };
   }
 
+  // otherwise expect an array of matches
   newPred = newPred || function( value ) {
     return matchArray(value, [].slice.call(pred), []);
   };
@@ -40,7 +44,7 @@ function matchMany(values, pred) {
 
   result = {
     binding: [],
-    rest: values
+    rest: [].slice.call(values)
   };
 
   while(values.length) {
@@ -55,7 +59,7 @@ function matchMany(values, pred) {
         result.binding.push(v);
       }
 
-      result.rest.unshift();
+      result.rest.shift();
     } else {
       return result;
     }
@@ -75,7 +79,8 @@ function matchArray(value, check, bindings) {
   v = value.shift();
   c = check.shift();
 
-  if( !c || !v ){
+  // if either is undefined and they are not both undefined (value)
+  if( (c === undefined || v === undefined) && c !== v ){
     return false;
   }
 
