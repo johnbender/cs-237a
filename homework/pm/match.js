@@ -41,7 +41,7 @@ function matchArray(value, check, bindings) {
 
 function match(value /* , pat1, fun1, pat2, fun2, ... */) {
   var clauses = [].slice.call(arguments, 1);
-  var check, exec, bindings;
+  var check, exec, bindings, wrappedV, wrappedC;
 
   while( clauses.length ){
     check = clauses.shift();
@@ -51,22 +51,17 @@ function match(value /* , pat1, fun1, pat2, fun2, ... */) {
       throw new Error("clauses are mismatched");
     }
 
-    if( isValue(value) && check === window._ ) {
-      return exec(value);
-    }
+    wrappedV = isValue(value) ? [value] : value;
+    wrappedC = isValue(check) ? [check] : check;
 
-    if( isValue(value) && check === value ){
-      return exec(value);
-    }
+    // otherwise assume array
+    bindings = matchArray(wrappedV, wrappedC, []);
 
-    if( value.length ) {
-      // otherwise assume array
-      bindings = matchArray(value, check, []);
-
-      // if false wasn't returned use the bindings
-      if( bindings ){
-        return exec.apply(window, bindings);
-      }
+    // if false wasn't returned use the bindings
+    if( bindings ){
+      return exec.apply(window, bindings);
     }
   }
+
+  throw new Error("no match found");
 }
