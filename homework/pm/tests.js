@@ -51,7 +51,7 @@ tests(
     expected: 12
   },
   {
-    name: 'many',
+    name: 'many numbers',
     code: 'match(["sum", 1, 2, 3, 4],\n' +
           '  ["sum", many(when(isNumber))], function(ns) {\n' +
           '                                   return ns.reduce(function(x, y) { return x + y; });\n' +

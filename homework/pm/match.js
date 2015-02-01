@@ -6,10 +6,47 @@ function when( pred ){
   };
 }
 
+function many( pred ){
+  // a `when` is used as the predicate
+  if( pred.pred ){
+    pred = pred.pred;
+  }
+
+  if( Array.isArray(pred) ){
+    pred = function( value ) {
+      return matchArray(pred, value, []);
+    };
+  }
+
+  return {
+    many: pred
+  };
+}
+
 function isValue(e) {
   if( typeof e === "number" || typeof e === "string" ){
     return true;
   }
+}
+
+function matchMany(values, pred) {
+  var result = {
+    binding: [],
+    rest: values
+  };
+
+  while(values.length) {
+    var v = values.shift();
+
+    if( pred(v) ){
+      result.binding.push(v);
+      result.rest.unshift();
+    } else {
+      return result;
+    }
+  }
+
+  return result;
 }
 
 function matchArray(value, check, bindings) {
@@ -18,32 +55,25 @@ function matchArray(value, check, bindings) {
     return bindings;
   }
 
-  // if the check still has elements but value doesn't, vice versa
-  if( value.length !== check.length ){
-    return false;
-  }
-
   var v, c;
 
   v = value.shift();
   c = check.shift();
 
-  // the clause was a when and the pred doesn't match
-  // return no match
+  // the clause was a `when` and the pred doesn't match
   if ( c.pred && !c.pred(v) ){
     return false;
   }
-
   // we're not looking at an array or object
+  // c is not a many predicate
   // c is not a predicate
   // c is not a wildcard
   // the value and check don't match
-  // return no match
-  if( isValue(v) && !c.pred && c !== v && c !== window._ ){
+  if( isValue(v) && !c.many && !c.pred && c !== window._ && c !== v ){
     return false;
   }
 
-  // if it's a wild card add the binding regardless of value
+  // if it's a wild card, add the binding regardless of value
   if( c === window._ ) {
     bindings.push(v);
   }
@@ -53,8 +83,21 @@ function matchArray(value, check, bindings) {
     bindings.push(v);
   }
 
+  // we allow many to not match, ("zero or more")
+  // though the pattern matching might still succeed
+  if ( c.many ){
+    value.unshift(v);
+    var result = matchMany(value, c.many);
+
+    // push the result onto the bindings as an array
+    bindings.push(result.binding);
+
+    // process what's left recursively
+    value = result.rest;
+  }
+
   // nested array should recurse with nested arrays and append the bindings
-  if( Array.isArray(v) ){
+  if( !c.many && Array.isArray(v) ){
     bindings.concat(matchArray(v, c, bindings));
   }
 
@@ -81,7 +124,7 @@ function match(value /* , pat1, fun1, pat2, fun2, ... */) {
     // otherwise assume array
     bindings = matchArray(wrappedV, wrappedC, []);
 
-    // if false wasn't returned use the bindings
+    // if bindings were returned we have a match, invoke
     if( bindings ){
       return exec.apply(window, bindings);
     }
