@@ -134,6 +134,33 @@ tests(
     name: 'match null',
     code: 'match(null, null, function(){ return "foo"; })',
     expected: "foo"
+  },
+
+  {
+    name: 'many class 1',
+    code: 'match([1,2,3], [many(_)], function() { return JSON.stringify(arguments); })',
+    expected: '{"0":[1,2,3]}'
+  },
+  {
+    name: 'many class 2',
+    code: 'function isOne(x) { return x === 1 };\n'
+      + 'match([1,2,3], [many(when(isOne)),many(_)], function() { return JSON.stringify(arguments); })',
+    expected: '{"0":[1],"1":[2,3]}'
+  },
+  {
+    name: 'many class 3',
+    code: 'match([2,2,3], [many(when(isOne)),many(_)], function() { return JSON.stringify(arguments); })',
+    expected: '{"0":[],"1":[2,2,3]}'
+  },
+  {
+    name: 'many class 4',
+    code: 'match([1,2,3], [many(when(isOne)),2,many(_)], function() { return JSON.stringify(arguments); })',
+    expected: '{"0":[1],"1":[3]}'
+  },
+  {
+    name: 'many class 5',
+    code: 'match([[1,2],[3,4]], [many([many(_)])], function() { return JSON.stringify(arguments); })',
+    expected: '{"0":[[1,2],[3,4]]}'
   }
 );
 

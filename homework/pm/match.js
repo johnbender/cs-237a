@@ -1,5 +1,6 @@
 // TODO need something uniqe
-window._ = "wildcard";
+// accounts for node runs
+try{ global._ = "foo" } catch(e) { window._ = "foo" }
 
 function when( pred ){
   return {
