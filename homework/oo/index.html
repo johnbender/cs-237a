@@ -1,0 +1,394 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="resources/codemirror.css"></link>
+    <link rel="stylesheet" href="resources/common.css"></link>
+    <link rel="stylesheet" href="resources/tests.css"></link>
+
+    <script src="resources/helpers.js"></script>
+    <script src="test-harness.js"></script>
+  </head>
+  <body>
+    <everything>
+      <header>
+        <part>Part III:</part>
+        <descr>Object-Oriented Programming</descr>
+        <detail>(source-to-source translator)</detail>
+      </header>
+      <abstract>
+        In Part III of this class, we will "prototype" an object-oriented programming language using
+        a technique known as <i>source-to-source translation</i>.
+      </abstract>
+      <section>
+        <sectionHeader>
+          <span>Introduction</span>
+        </sectionHeader>
+        <p>
+          So far we've seen two common ways to prototype a programming language: as a stand-alone interpreter and as a
+          library (or <i>embedded language</i>) in an existing host language. In this part of the class we'll see a
+          third common implementation style that involves translating a program in the <i>source language</i> into a
+          program in an existing language (the <i>target language</i>) that has the desired behavior. Such a
+          <i>source-to-source translation</i> can be viewed as a lightweight form of compilation: rather than
+          translating all the way down to machine code, the language implementer gets to leverage the features in a
+          high-level target language, which significantly simplifies the task.
+        </p>
+        <p>
+          This approach can also be seen as a middle ground between the two prior approaches we've seen in the class.
+          Like with an interpreter, the source language has its own syntax (and requires a parser to convert this
+          syntax into some form of abstract syntax trees). Like with an embedded language, it's often possible to
+          represent features in the source language directly, using counterparts in the target language. For example, it
+          might be possible to translate a function in the source language to a function in the target language that
+          has the same behavior, which then allows function calls in the source language to be implemented simply as
+          function calls in the target language.
+        </p>
+        <p>
+          Of course, some language features in the source language will not map directly to a semantically-equivalent
+          construct in the target language. In that case, the translation has to construct some code in the target
+          language that will behave as desired. Depending on the complexity of that code, it may be nicer to factor it
+          out to a library so that the target code is as simple and readable as possible. Such a library is similar in
+          spirit to the idea of an embedded language that we saw in the previous homework assignment, except that this
+          library is meant only for use by the source-to-source translator rather than directly by the programmer.
+        </p>
+        <p>
+          In Part III of this class, you'll "prototype" an object-oriented programming language by translating it to
+          JavaScript. In Homework #4, you will write a library that implements the core semantics of classes and
+          objects in our source language. In Homework #5, you will write a translator that completes the prototype and
+          also add some interesting new features to the language.
+        </p>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Our OO Language</span>
+        </sectionHeader>
+        <p>
+          We'll start with a "vanilla" object-oriented language with single inheritance. Our language is
+          dynamically-typed, and has Java-like syntax.
+        </p>
+        <h2>Declaring Classes</h2>
+        <p>
+          Here's how you declare a new class in our language:
+	  <codeBlock>class Point {
+  var x, y;
+}</codeBlock>
+          The <code>Point</code> class in this example has two instance variables, <code>x</code> and <code>y</code>.
+          (Instance variables are declared using the <code>var</code> keyword.)
+        </p>
+        <p>
+          By default, new classes are subclasses of <code>Object</code>, which is the root of the class hierarchy in
+          our language. You can optionally specify a superclass in a class declaration using  the <code>extends</code>
+          keyword, e.g.,<codeBlock>class ThreeDeePoint extends Point {
+  var z;
+}</codeBlock>
+        </p>
+        <h2>Declaring Methods</h2>
+        <p>
+          Our language supports <i>open classes</i>. This means that you can add new methods to a class without
+          editing its declaration. In fact, the syntax of our language does not even allow programmers to write methods
+          as part of a class declaration. Here's how you add a method called <code>initialize</code> with arguments
+          <code>x</code> and <code>y</code> to our <code>Point</code> class:<codeBlock>def Point.initialize(x, y) {
+  this.x = x;
+  this.y = y;
+}</codeBlock>
+          And here's how you override <code>Point</code>'s <code>initialize</code> method shown above for instances
+          of <code>ThreeDeePoint</code>:<codeBlock>def ThreeDeePoint.initialize(x, y, z) {
+  super.initialize(x, y);
+  this.z = z;
+}
+</codeBlock>
+          <b>Note:</b> In our language, it doesn't matter that <code>ThreeDeePoint</code>'s version of
+          <code>initialize</code> takes 3 arguments whereas <code>Point</code>'s <code>initialize</code> method only
+          takes two arguments &mdash; the former still overrides the latter. (Our language does not support static
+          overloading.)
+        </p>
+        <h2>Creating Objects</h2>
+        <p>
+          To create a new instance of a class, you use the <code>new</code> keyword:
+          <codeBlock>var p = new Point(1, 2);</codeBlock>
+          As part of evaluating a <code>new</code> expression, our language invokes the <code>initialize</code> method
+          on the new instance with the arguments supplied. Here's what happens when the expression
+          <code>new C(arg<sub>1</sub>, arg<sub>2</sub>, &hellip;)</code> is evaluated:
+          <ul>
+            <li>A new instance of <code>C</code> is created;</li>
+            <li>The new instance's <code>initialize</code> method is called with the arguments provided, i.e.,
+              <code>newInstance.initialize(arg<sub>1</sub>, arg<sub>2</sub>, &hellip;)</code>;</li>
+            <li>The new instance becomes the value of the entire <code>new</code> expression.</li>
+          </ul>
+        </p>
+        <h2>Statements and Expressions</h2>
+        <p>
+          Our language supports typical kinds of statements and expressions that you find in an OO language, most
+          importantly the abilities to send a message to an object, access the value of an instance variable of an
+          object, and update the value of an instance variable of an object. The <code>initialize</code> methods above
+          illustrate assignment to instance variables, for example. These constructs should have the same behavior as
+          they do in a typical OO language such as Java.
+        </p>
+        <p>
+          In homework #4, method bodies can additionally employ JavaScript primitive values and associated
+          operations, along with control-flow statements like conditionals and loops. In homework #5
+          we will see how our source language supports these things (and more!) in an elegant and powerful way.
+        </p>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Homework #4: A Library for Classes and Objects</span>
+        </sectionHeader>
+        <p>
+          <due>
+            <b>Due at 11:30pm on Friday, February 20.</b>
+            Turn in just your <tt>oo.js</tt> file through the course page on CCLE.
+          </due>
+        </p>
+        <p>
+          In this homework assignment, you will implement a library containing the core functionality that will be
+          necessary for the translation of our OO language to JavaScript.  This homework assignment has two parts,
+          described below.
+        </p>
+        <p>
+          <b>Important:</b> Please do your work in a file called <a href="oo.js"><code>oo.js</code></a>. Each time you
+          refresh this page, that file is loaded by our test harness to run the unit tests on this page. As in the
+          previous homework assignments, you can add your own test cases by editing
+          <a href="hw4-tests-part1.js"><code>hw4-tests-part1.js</code></a> and
+          <a href="hw4-tests-part2.js"><code>hw4-tests-part2.js</code></a>.
+        </p>
+        <h2>Part I: The Library</h2>
+        <p>
+          Your library, which will be accessed via the global variable <code>OO</code>, will maintain a
+          <i>class table</i> that maps class names to their associated classes. This means that you will have to come
+          up with an appropriate representation of classes. You will also have to decide how to represent
+          instances of those classes. Your library must support all of the methods described below:
+          <ul>
+            <li>
+              <code>initializeCT()</code>
+              <ul>
+                <li>Initializes the class table. After this method is called, the class table should only contain the
+                  <code>Object</code> class, which must support the following methods:
+                  <ul>
+                    <li><code>initialize()</code>, which does nothing.
+                    <li><code>=== x</code>, which returns <code>true</code> if the receiver and <code>x</code> are
+                      the same object, <code>false</code> otherwise.<br>
+                      (This method has the same semantics as JavaScript's <code>===</code> operator.)</li>
+                    <li><code>!== x</code>, which returns <code>true</code> if the receiver and <code>x</code> are
+                      <b>not</b> the same object, <code>false</code> otherwise.<br>
+                      (This method has the same semantics as JavaScript's <code>!==</code> operator.)</li>
+                  </ul>
+                  (See <code>declareMethod</code> below for more on the representation of methods.)</li>
+              </ul>
+            </li>
+            <li>
+              <code>declareClass(name, superClassName, instVarNames)</code>
+              <ul>
+                <li>Creates a new class with the appropriate name, superclass, and instance variable names, and adds
+                  that class to the class table.
+                <li>Throws an exception if:
+                  <ul>
+                    <li>The class table already contains a class with the same name
+                      (<i>duplicate class declaration</i>).</li>
+                    <li>There is no entry in the class table for <code>superClassName</code>
+                      (<i>undeclared class</i>).</li>
+                    <li>There are duplicates in <code>instVarNames</code>, or one or more elements of
+                      <code>instVarNames</code> are also instance variable names of a (possibly transitive) superclass
+                      (<i>duplicate instance variable declaration</i>).</li>
+                  </ul>
+                </li>
+                <li>E.g., <code>OO.declareClass("Point", "Object", ["x", "y"])</code></li>
+              </ul>
+            </li>
+            <li>
+              <code>declareMethod(className, selector, implFn)</code>
+              <ul>
+                <li>Adds a method named <code>selector</code> to the class named <code>className</code>, whose
+                  associated method implementation is <code>implFn</code>.</li>
+                <li>The implementation function <code>implFn</code> should have <code>_this</code> as its first
+                  argument, followed by the formal arguments of the method that is being declared. (When a method
+                  is called, <code>_this</code> will be bound to the receiver.) E.g.,
+                  <codeBlock>OO.declareMethod("Point", "initialize",
+  function(_this, x, y) {
+    OO.setInstVar(_this, "x", x);
+    OO.setInstVar(_this, "y", y);
+  }
+);</codeBlock>
+and <codeBlock>OO.declareMethod("Point", "+",
+  function(_this, that) {
+    return OO.instantiate(
+      "Point",
+      OO.send(OO.getInstVar(_this, "x"), "+", send(that, "getX")),
+      OO.send(OO.getInstVar(_this, "y"), "+", send(that, "getY"))
+    );
+  }
+);</codeBlock></li>
+                <li>Note that <code>declareMethod</code> can also be used to override a method of the same
+                  name in the superclass.</li>
+              </ul>
+            </li>
+            <li>
+              <code>instantiate(className, arg<sub>1</sub>, arg<sub>2</sub>, &hellip;)</code>
+              <ul>
+                <li>Creates a new instance of the class named <code>className</code>, calls its <code>initialize</code>
+                   method with <code>arg<sub>1</sub></code>, <code>arg<sub>2</sub></code>, &hellip; as arguments, and
+                   returns the new instance.</li>
+                <li>Throws an exception if there is no entry in the class table for <code>className</code>
+                  (<i>undeclared class</i>).</li>
+                <li>E.g., <code>OO.instantiate("Point", 1, 2)</code> should evaluate to a new <code>Point</code> whose
+                  <code>x</code> and <code>y</code> instance variables have been initialized to <code>1</code> and
+                  <code>2</code>, respectively. (Assuming that <code>Point.initialize</code> was declared as shown
+                  above.)</li>
+              </ul>
+            </li>
+            <li>
+              <code>send(recv, selector, arg<sub>1</sub>, arg<sub>2</sub>, &hellip;)</code>
+              <ul>
+                <li>Looks up the method with the name <code>selector</code> in the class of <code>recv</code> (the
+                  <i>receiver</i> of the message), calls the method with the appropriate arguments, and returns the
+                  result of that call.</li>
+                <li>Throws an exception if <code>recv</code>'s class does not have such a method
+                  (<i>message not understood</i>).</li>
+                <li>E.g., <code>OO.send(OO.instantiate("Point", 1, 2), "+", OO.instantiate("Point", 3, 4))</code> should
+                  evaluate to a new <code>Point</code> whose <code>x</code> and <code>y</code> instance variables are
+                  equal to <code>4</code> and <code>6</code>, respectively.</li>
+              </ul>
+            </li>
+            <li>
+              <code>superSend(superClassName, recv, selector, arg<sub>1</sub>, arg<sub>2</sub>, &hellip;)</code>
+              <ul>
+                <li>Looks up the method that corresponds to <code>selector</code> in the class called
+                  <code>superClassName</code>, calls it with the appropriate arguments, and returns the result of that
+                  call.</li>
+                <li>Throws an exception if:
+                  <ul>
+                    <li>There is no entry in the class table for <code>superClassName</code>
+                      (<i>undeclared class</i>).</li>
+                    <li>The superclass does not have such a method (<i>message not understood</i>).</li>
+                  </ul></li>
+                <li>E.g., <code>OO.superSend("Object", myPoint, "initialize")</code></li>
+              </ul>
+            </li>
+            <li>
+              <code>getInstVar(recv, instVarName)</code>
+              <ul>
+                <li>Returns the value of the instance variable called <code>instVarName</code> in
+                  <code>recv</code>.</li>
+                <li>Throws an exception if <code>recv</code> does not have an instance variable with that name
+                  (<i>undeclared instance variable</i>).</li>
+                <li>E.g., <code>OO.getInstVar(myPoint, "x")</code>
+              </ul>
+            </li>
+            <li>
+              <code>setInstVar(recv, instVarName, value)</code>
+              <ul>
+                <li>Sets the value of the instance variable called <code>instVarName</code> in <code>recv</code> to
+                  <code>value</code> and returns that value.</li>
+                <li>Throws an exception if <code>recv</code> does not have an instance variable with that name
+                  (<i>undeclared instance variable</i>).</li>
+                <li>E.g., <code>OO.setInstVar(myPoint, "x", 5)</code></li>
+              </ul>
+            </li>
+          </ul>
+        </p>
+        <p>
+          These are all of the requirements for your implementation. However, you'll probably want to declare a few
+          helper methods to simplify your implementation of the API described above. Here are a couple of ideas to get
+          you started:
+          <ul>
+            <li>
+              <code>getClass(name)</code>
+              <ul>
+                <li>Returns the object that represents the class with the given <code>name</code>.</li>
+                <li>Throws an exception if there is no such class (<i>undeclared class</i>).</li>
+              </ul>
+            </li>
+            <li>
+              <code>classOf(x)</code>
+              <ul>
+                <li>Returns the object that represents the class of the object <code>x</code>.</li>
+                <li>E.g., <code>OO.classOf(OO.instantiate("Point", 1, 2))</code> should evaluate to the object that
+                  represents the <code>Point</code> class.</li>
+              </ul>
+            </li>
+            <li>&hellip;</li>
+          </ul>
+        </p>
+        <h3>Unit Tests for Part I</h3>
+        <script src="oo.js"></script>
+        <script src="hw4-tests-part1.js"></script>
+        <p>
+          You can add your own test cases by editing <a href="hw4-tests-part1.js"><code>hw4-tests-part1.js</code></a>.
+        </p>
+        <h2>Part II: Look ma, no primitives!</h2>
+        <p>
+          In mainstream "object-oriented" languages like Java and C++, primitive values like <code>5</code> and
+          <code>true</code> are not real objects. This is unfortunate because (among other things) it often forces
+          programmers to write code in an unnatural way. Here are a couple of examples:
+          <ul>
+            <li>Isn't it annoying that you can write <code>getAge()</code> as a method of <code>Person</code>, but you
+              can't write <code>factorial</code> as a method of <code>int</code>?</li>
+            <li>Why is it that primitive types like <code>int</code> are not classes?!?! In Java,
+              this means that you can't use them as type parameters of a generic class / interface. For example, you
+              can't have a <code>Set&lt;int&gt;</code> &mdash; instead, you're stuck with
+              <code>Set&lt;Integer&gt;</code>, i.e., a set of <i>boxed</i> <code>int</code>s. Is this really something
+              the programmer should have to deal with?</li>
+          </ul>
+        </p>
+        <p>
+          As an aspiring language designer, we hope this lack of uniformity gives you the heebie-jeebies, and we know
+          you can do better! It shouldn't matter how an integer is represented at the language implementation level.
+          Our job is to help programmers, and we shouldn't expose them to implementation details that make programming
+          more complicated than it has to be.
+        </p>
+        <p>
+          In Homework #5, we will make our language into a "pure" object-oriented language, i.e., a language in which
+          <i>everything</i> is an object. As we'll see, this has some really nice benefits for the expressiveness of
+          the language. OK, you're clearly excited about this&hellip; Alright then, we won't make you wait until
+          Homework #5 to get a taste of the pure stuff :)
+        </p>
+        <p>
+          As a first step toward supporting pure OO programming, modify your implementation of the API described above
+          so that JavaScript's primitive numbers can be used as first-class objects in your language. For example,
+          <code>OO.send(6, "*", 7)</code> should evaluate to <code>42</code>. Here are the changes you'll have to make:
+          <ul>
+            <li>
+              <code>OO.initializeCT()</code> should declare the following classes and methods:
+              <ul>
+              <li>
+                <code>Object</code>
+                <ul>
+                  <li><code>initialize()</code>, <code>===</code>, and <code>!==</code> should work as described
+                    previously.</li>
+                  <li><code>isNumber()</code> returns <code>false</code></li>
+                </ul>
+              </li>
+              <li>
+                <code>Number</code> (a subclass of <code>Object</code>)
+                <ul>
+                  <li><code>isNumber()</code> returns <code>true</code></li>
+                  <li><code>+ anotherNumber</code> returns the sum of the receiver and <code>anotherNumber</code>
+                  <li><code>- anotherNumber</code> &hellip;
+                  <li><code>* anotherNumber</code> &hellip;
+                  <li><code>/ anotherNumber</code> &hellip;
+                  <li><code>% anotherNumber</code> &hellip;
+                </ul>
+              </li>
+              <li>
+                When <code>typeof recv === "number"</code>,<br>
+                <code>OO.send(recv, selector, arg<sub>1</sub>, arg<sub>2</sub>, &hellip;)</code> should look up the
+                method with the name <code>selector</code> in the <code>Number</code> class.
+              </li>
+            </ul>
+          </ul>
+        </p>
+        <h3>Unit Tests for Part II</h3>
+        <script src="hw4-tests-part2.js"></script>
+        <p>
+          You can add your own test cases by editing <a href="hw4-tests-part2.js"><code>hw4-tests-part2.js</code></a>.
+        </p>
+      </section>
+      <section>
+        <sectionHeader>
+          <span>Homework #5, Extra Credit, Etc.</span>
+        </sectionHeader>
+        <p>
+          <i>Coming soon!</i>
+        </p>
+      </section>
+    </everything>
+  </body>
+</html>
+
