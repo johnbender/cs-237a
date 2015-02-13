@@ -8,7 +8,12 @@ var OO = {};
 
     // object
     this._methods = config.methods || {};
+
+    // name for instance ref
     this._name = config.name;
+
+    // parent for traversal
+    this._parent = config.parent || "Object";
   }
 
   Class.prototype.def = function(selector, fn) {
@@ -19,19 +24,52 @@ var OO = {};
    // add the instance to the args
     args.unshift(instance);
 
-    console.log(this._methods);
+    if( ! this._methods[name] ){
+      throw new Error([
+        "Message not understood, object of type `",
+        this._name + "` got `" + name + "`"
+      ].join(""));
+    }
+
+    debugger;
     return this._methods[name].apply(instance, args);
   };
 
   Class.prototype.init = function(args) {
     var instance = {};
 
+    instance._class = this._name;
+
     // let the constructor do something if it wants
     this.send(instance, "initialize", args);
 
-    instance.class = this._name;
-
     return instance;
+  };
+
+  Class.prototype.set = function( instance, name, value ) {
+    this._checkIvar(name);
+
+    if( this._ivars.indexOf(name) == -1 ){
+      return table[this._parent].set( instance, name, value );
+    };
+
+    return instance[name] = value;
+  };
+
+  Class.prototype.get = function( instance, name ) {
+    this._checkIvar(name);
+
+    if( this._ivars.indexOf(name) == -1 ){
+      return table[this._parent].get( instance, name );
+    };
+
+    return instance[name];
+  };
+
+  Class.prototype._checkIvar = function( name ) {
+    if( this._name === "Object" ){
+      throw new Error("Instance variable not defined");
+    }
   };
 
   ns.initializeCT = function() {
@@ -51,10 +89,16 @@ var OO = {};
     });
   };
 
+  ns.declareClass = function(name, parent, ivars) {
+    table[name] = new Class({
+      ivars: ivars,
+      name: name,
+      parent: parent
+    });
+  };
+
   ns.declareMethod = function(className, selector, fn) {
-    if( !table[className] ){
-      throw new Error( "attempt to add method to undeclared class: " + className );
-    }
+    checkClass(className);
 
     table[className].def(selector, fn);
   };
@@ -66,9 +110,60 @@ var OO = {};
     return cls.init(args);
   };
 
+  ns.setInstVar = function( instance, name, value ) {
+    return table[instance._class].set(instance, name, value );
+  };
+
+  ns.getInstVar = function( instance, name ) {
+    return table[instance._class].get( instance, name );
+  };
+
   ns.send = function(instance, name){
     var args = [].slice.call(arguments, 2);
 
-    return table[instance.class].send(instance, name, args);
+    // since this is internal this check is purely for sanity
+    if( !isPrim(instance) ){
+      checkClass(instance._class);
+    } else {
+      return primSend(instance, name, args);
+    }
+
+    debugger;
+    return table[instance._class].send(instance, name, args);
   };
+
+  ns.superSend = function(parent, instance, name) {
+    checkClass(parent);
+
+    var args = [].slice.call(arguments, 3);
+
+    return table[parent].send(instance, name, args);
+  };
+
+  function checkClass(className) {
+    if( !table[className] ){
+      throw new Error( "Undefined class: " + className );
+    }
+  };
+
+  function isPrim(e){
+    if( typeof e === "number" || typeof e === "string" ){
+      return true;
+    }
+  }
+
+  function primSend(value, name, args) {
+    switch(name){
+    case "+":
+      return value + args[1];
+    case "-":
+      return value - args[1];
+    case "/":
+      return value / args[1];
+    case "*":
+      return value * args[1];
+    default:
+      return value[name].apply(value, args);
+    }
+  }
 })(OO);
