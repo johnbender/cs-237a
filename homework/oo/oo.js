@@ -120,12 +120,13 @@ var OO = {};
   ns.send = function(instance, name){
     var args = [].slice.call(arguments, 2);
 
-    // since this is internal this check is purely for sanity
-    if( !isPrim(instance) ){
-      checkClass(instance._class);
-    } else {
+    // if there's a send to a primitive then we need to handle that
+    if( isPrim(instance) ){
       return primSend(instance, name, args);
     }
+
+    // since this is internal this check is purely for sanity
+    checkClass(instance._class);
 
     return table[instance._class].send(instance, name, args);
   };
