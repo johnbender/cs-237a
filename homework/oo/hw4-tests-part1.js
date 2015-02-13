@@ -23,7 +23,17 @@ tests(
     expected: 7
   },
   {
-    name: 'Point',
+    name: 'message not understood',
+    code: 'OO.send(OO.instantiate("Object"), "not going to exist", 3, 4);',
+    shouldThrow: true
+  },
+  {
+    name: 'set ivar',
+    code: 'OO.setInstVar(OO.instantiate("Object"), "foo", 3);',
+    shouldThrow: true
+  },
+  {
+    name: 'normal Point',
     code: '// class Point { var x, y; }\n' +
           'OO.declareClass("Point", "Object", ["x", "y"]);\n\n' +
           '// def Point.initialize(x, y) {\n' +
@@ -113,4 +123,3 @@ tests(
     expected: 25
   }
 );
-

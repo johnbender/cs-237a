@@ -31,7 +31,6 @@ var OO = {};
       ].join(""));
     }
 
-    debugger;
     return this._methods[name].apply(instance, args);
   };
 
@@ -128,7 +127,6 @@ var OO = {};
       return primSend(instance, name, args);
     }
 
-    debugger;
     return table[instance._class].send(instance, name, args);
   };
 
