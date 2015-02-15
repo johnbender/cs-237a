@@ -16,21 +16,36 @@ var OO = {};
     this._parent = config.parent || "Object";
   }
 
+  Class.prototype.parent = function() {
+    return table[this._parent];
+  };
+
   Class.prototype.def = function(selector, fn) {
     this._methods[selector] = fn;
   };
 
-  Class.prototype.send = function(instance, name, args) {
+  Class.prototype.send = function(instance, name, args, cls) {
+    var parent;
+
+    cls = cls ? cls : instance._class;
+
    // add the instance to the args
     args.unshift(instance);
 
-    if( ! this._methods[name] ){
-      throw new Error([
-        "Message not understood, object of type `",
-        this._name + "` got `" + name + "`"
-      ].join(""));
+    // this class doesn't implement the requested methods
+    if( ! this._methods[name] ) {
+
+      // if we're not at the top of the hierarchy go up
+      // otherwise vomit
+      if( cls !== "Object" ){
+        parent = table[cls].parent();
+        return parent.send(instance, name, args, parent._name);
+      } else {
+        throw new Error("Message not understood");
+      }
     }
 
+    // otherwise just apply
     return this._methods[name].apply(instance, args);
   };
 

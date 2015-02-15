@@ -107,6 +107,18 @@ tests(
     expected: 'ThreeDeePoint(5, 7, 9)'
   },
   {
+    name: "walk the hierarchy",
+    code: 'OO.declareClass("C", "Object", ["value"]);\n\n' +
+      'OO.send(OO.instantiate("C", 5), "!==", 4);',
+    expected: false
+  },
+  {
+    name: "walk the hierarchy, fail",
+    code: 'OO.declareClass("C", "Object", ["value"]);\n\n' +
+      'OO.send(OO.instantiate("C", 5), "bar", 4);',
+    shouldThrow: true
+  },
+  {
     name: 'OK to have a method and an instance variable with the same name',
     code: '// class C { var value; }\n' +
           'OO.declareClass("C", "Object", ["value"]);\n\n' +
