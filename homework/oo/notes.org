@@ -1,0 +1,3 @@
+* primitive values should behave as objects
+** def
+** send

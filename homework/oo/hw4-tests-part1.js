@@ -15,6 +15,11 @@ OO.initializeCT();
 
 tests(
   {
+    name: 'primitive values should allow extension',
+    code: 'false',
+    expected: true
+  },
+  {
     name: 'method declaration and send',
     code: '// def Object.add(x, y) { return x + y; }\n' +
           'OO.declareMethod("Object", "add", function(_this, x, y) { return x + y; });\n\n' +

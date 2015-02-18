@@ -1,0 +1,4 @@
+* lists are null terminated using the sugar
+** doesn't matter for pattern matching
+** matters for comprehensions
+**
