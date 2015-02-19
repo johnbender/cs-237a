@@ -35,9 +35,6 @@ var OO = {};
 
     cls = cls ? cls : instance._class;
 
-    // add the instance to the args
-    args.unshift(instance);
-
     // this class doesn't implement the requested methods
     if( ! this._methods[name] ) {
 
@@ -50,6 +47,9 @@ var OO = {};
         throw new Error("Message not understood");
       }
     }
+
+    // add the instance to the args
+    args.unshift(instance);
 
     // otherwise just apply
     return this._methods[name].apply(instance, args);
@@ -107,6 +107,10 @@ var OO = {};
         initialize: function() {},
 
         "===": function(_this, other) {
+          if( _this._class == "C" ){
+            debugger;
+          }
+
           return _this === other;
         },
 
