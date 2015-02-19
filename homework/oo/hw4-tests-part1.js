@@ -15,6 +15,61 @@ OO.initializeCT();
 
 tests(
   {
+    name: 'object equality',
+    code: 'var foo = OO.instantiate("Object");\n' +
+          'OO.send(foo, "===", foo);',
+    expected: true
+  },
+  {
+    name: 'object equality false',
+    code: 'var foo = OO.instantiate("Object");' +
+          'var bar = OO.instantiate("Object"); window.foo = foo; window.bar = bar;' +
+          'OO.send(foo, "===", bar);',
+    expected: false
+  },
+  {
+    name: 'object inequality false',
+    code: 'var foo = OO.instantiate("Object");\n' +
+          'OO.send(foo, "!==", foo);',
+    expected: false
+  },
+  {
+    name: 'object inequality',
+    code: 'var foo = OO.instantiate("Object");' +
+          'var bar = OO.instantiate("Object");' +
+          'OO.send(foo, "!==", bar);',
+    expected: true
+  },
+  {
+    name: 'object equality',
+    code: 'OO.declareMethod("Object", "add", function(_this, x, y) { return x + y; });\n\n' +
+          'var foo = OO.instantiate("Object");// new Object().add(3, 4)\n' +
+          'OO.send(foo, "===", foo);',
+    expected: true
+  },
+  {
+    name: 'redeclare',
+    code: 'OO.declareClass("Object");',
+    shouldThrow: true
+  },
+  {
+    name: 'declare name',
+    code: 'OO.declareClass("Foo");' +
+          'var foo = OO.instantiate("Foo");' +
+          'foo._class',
+    expected: "Foo"
+  },
+  {
+    name: 'declare parent',
+    code: 'OO.declareClass("Faz", "Object")._parent;',
+    expected: "Object"
+  },
+  {
+    name: 'declare parent undefined',
+    code: 'OO.declareClass("Foo", "Bar");',
+    shouldThrow: true
+  },
+  {
     name: 'method declaration and send',
     code: '// def Object.add(x, y) { return x + y; }\n' +
           'OO.declareMethod("Object", "add", function(_this, x, y) { return x + y; });\n\n' +
@@ -120,18 +175,14 @@ tests(
   },
   {
     name: 'OK to have a method and an instance variable with the same name',
-    code: '// class C { var value; }\n' +
-          'OO.declareClass("C", "Object", ["value"]);\n\n' +
-          '// def C.initialize(value) { this.value = value; }\n' +
-          'OO.declareMethod("C", "initialize", function(_this, value) {\n' +
+    code: 'OO.declareClass("D", "Object", ["value"]);\n\n' +
+          'OO.declareMethod("D", "initialize", function(_this, value) {\n' +
           '  OO.setInstVar(_this, "value", value);\n' +
           '});\n\n' +
-          '// def C.value() { return this.value * this.value; }\n' +
-          'OO.declareMethod("C", "value", function(_this) {\n' +
+          'OO.declareMethod("D", "value", function(_this) {\n' +
           '  return OO.getInstVar(_this, "value") * OO.getInstVar(_this, "value");\n' +
           '});\n\n' +
-          '// new C(5).value()\n' +
-          'OO.send(OO.instantiate("C", 5), "value");',
+          'OO.send(OO.instantiate("D", 5), "value");',
     expected: 25
   }
 );

@@ -92,19 +92,27 @@ var OO = {};
       methods: {
         initialize: function() {},
 
-        "===": function(other) {
-          return this === other;
+        "===": function(_this, other) {
+          return _this === other;
         },
 
-        "!==": function(other) {
-          return this !== other;
+        "!==": function(_this, other) {
+          return _this !== other;
         }
       }
     });
   };
 
   ns.declareClass = function(name, parent, ivars) {
-    table[name] = new Class({
+    if( parent && ! table[parent] ){
+      throw new Error( "Undefined parent class: " + parent );
+    }
+
+    if( table[name] ){
+      throw new Error( "Class `" + name  + "` already defined." );
+    }
+
+    return table[name] = new Class({
       ivars: ivars,
       name: name,
       parent: parent
