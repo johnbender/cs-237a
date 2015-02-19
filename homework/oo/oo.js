@@ -28,20 +28,15 @@ var OO = {};
   Class.prototype.send = function(instance, name, args, cls) {
     var parent;
 
-    // if there's a send to a primitive then we need to handle that
-    if( isPrim(instance) ){
-      return primSend(instance, name, args);
-    }
-
-    cls = cls ? cls : instance._class;
+    cls = getClass(instance);
 
     // this class doesn't implement the requested methods
     if( ! this._methods.hasOwnProperty(name) ) {
 
       // if we're not at the top of the hierarchy go up
       // otherwise vomit
-      if( cls !== "Object" ){
-        parent = table[cls].parent();
+      if( cls._name !== "Object" ){
+        parent = cls.parent();
         return parent.send(instance, name, args, parent._name);
       } else {
         throw new Error("Message not understood");
@@ -101,10 +96,16 @@ var OO = {};
   };
 
   ns.initializeCT = function() {
+    table = {};
+
     table["Object"] = new Class({
       name: "Object",
       methods: {
         initialize: function() {},
+
+        isNumber: function() {
+          return false;
+        },
 
         "===": function(_this, other) {
           return _this === other;
@@ -112,6 +113,35 @@ var OO = {};
 
         "!==": function(_this, other) {
           return _this !== other;
+        }
+      }
+    });
+
+    table["Number"] = new Class({
+      name: "Number",
+      methods: {
+        isNumber: function() {
+          return true;
+        },
+
+        "+": function(_this, other) {
+          return _this + other;
+        },
+
+        "-": function(_this, other) {
+          return _this - other;
+        },
+
+        "*": function(_this, other) {
+          return _this * other;
+        },
+
+        "/": function(_this, other) {
+          return _this / other;
+        },
+
+        "%": function(_this, other) {
+          return _this % other;
         }
       }
     });
@@ -173,12 +203,11 @@ var OO = {};
   };
 
   ns.send = function( instance, name ){
-    var args = [].slice.call(arguments, 2);
+    var args = [].slice.call(arguments, 2), cls;
 
-    // since this is internal this check is purely for sanity
-    checkClass(instance._class);
+    cls = getClass(instance);
 
-    return table[instance._class].send(instance, name, args);
+    return cls.send(instance, name, args);
   };
 
   ns.superSend = function( parent, instance, name ) {
@@ -203,6 +232,10 @@ var OO = {};
     if( typeof e === "number" || typeof e === "string" ){
       return true;
     }
+  }
+
+  function getClass( instance ) {
+    return typeof instance === "number" ? table["Number"] : table[instance._class];
   }
 
   function primSend(value, name, args) {

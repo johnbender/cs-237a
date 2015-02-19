@@ -25,7 +25,7 @@ tests(
   },
   {
     name: 'Point, sending messages to Numbers',
-    code: '// class Point { var x, y; }\n' +
+    code: 'OO.initializeCT();// class Point { var x, y; }\n' +
           'OO.declareClass("Point", "Object", ["x", "y"]);\n\n' +
           '// def Point.initialize(x, y) {\n' +
           '//   super.initialize();\n' +
@@ -123,4 +123,3 @@ tests(
     expected: 120
   }
 );
-
