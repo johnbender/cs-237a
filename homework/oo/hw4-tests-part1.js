@@ -129,6 +129,19 @@ tests(
     shouldThrow: true
   },
   {
+    name: 'get ivar fail',
+    code: 'OO.getInstVar(OO.instantiate("Object"), "blaz");',
+    shouldThrow: true
+  },
+  {
+    name: 'get ivar succeed',
+    code: 'OO.declareClass("GetIvar", "Object", ["foo"]);' +
+      'var givar = OO.instantiate("GetIvar");' +
+      'OO.setInstVar(givar, "foo", 3);'+
+      'OO.getInstVar(givar, "foo");',
+    expected: 3
+  },
+  {
     name: 'normal Point',
     code: '// class Point { var x, y; }\n' +
           'OO.declareClass("Point", "Object", ["x", "y"]);\n\n' +
