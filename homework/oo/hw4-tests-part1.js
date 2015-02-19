@@ -219,12 +219,12 @@ tests(
     name: "walk the hierarchy",
     code: 'OO.declareClass("C", "Object", ["value"]);\n\n' +
       'OO.send(OO.instantiate("C", 5), "!==", 4);',
-    expected: false
+    expected: true
   },
   {
     name: "walk the hierarchy, fail",
-    code: 'OO.declareClass("C", "Object", ["value"]);\n\n' +
-      'OO.send(OO.instantiate("C", 5), "bar", 4);',
+    code: 'OO.declareClass("whf", "Object", ["value"]);\n\n' +
+      'OO.send(OO.instantiate("whf", 5), "bar", 4);',
     shouldThrow: true
   },
   {

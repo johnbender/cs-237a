@@ -36,7 +36,7 @@ var OO = {};
     cls = cls ? cls : instance._class;
 
     // this class doesn't implement the requested methods
-    if( ! this._methods[name] ) {
+    if( ! this._methods.hasOwnProperty(name) ) {
 
       // if we're not at the top of the hierarchy go up
       // otherwise vomit
@@ -107,10 +107,6 @@ var OO = {};
         initialize: function() {},
 
         "===": function(_this, other) {
-          if( _this._class == "C" ){
-            debugger;
-          }
-
           return _this === other;
         },
 
