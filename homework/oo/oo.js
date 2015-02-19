@@ -1,5 +1,6 @@
 var OO = {};
 
+// TODO all the table[_] refs can be replaced by referencing the object itself
 (function( ns ) {
   var table = {};
 
@@ -27,9 +28,14 @@ var OO = {};
   Class.prototype.send = function(instance, name, args, cls) {
     var parent;
 
+    // if there's a send to a primitive then we need to handle that
+    if( isPrim(instance) ){
+      return primSend(instance, name, args);
+    }
+
     cls = cls ? cls : instance._class;
 
-   // add the instance to the args
+    // add the instance to the args
     args.unshift(instance);
 
     // this class doesn't implement the requested methods
@@ -166,13 +172,8 @@ var OO = {};
     return table[instance._class].get( instance, name );
   };
 
-  ns.send = function(instance, name){
+  ns.send = function( instance, name ){
     var args = [].slice.call(arguments, 2);
-
-    // if there's a send to a primitive then we need to handle that
-    if( isPrim(instance) ){
-      return primSend(instance, name, args);
-    }
 
     // since this is internal this check is purely for sanity
     checkClass(instance._class);
@@ -180,21 +181,25 @@ var OO = {};
     return table[instance._class].send(instance, name, args);
   };
 
-  ns.superSend = function(parent, instance, name) {
+  ns.superSend = function( parent, instance, name ) {
     checkClass(parent);
 
     var args = [].slice.call(arguments, 3);
 
+    if( ! table[parent] ){
+      throw new Error( "Undefined super class `" + parent + "`");
+    }
+
     return table[parent].send(instance, name, args);
   };
 
-  function checkClass(className) {
+  function checkClass( className ) {
     if( !table[className] ){
       throw new Error( "Undefined class: " + className );
     }
   };
 
-  function isPrim(e){
+  function isPrim( e ){
     if( typeof e === "number" || typeof e === "string" ){
       return true;
     }

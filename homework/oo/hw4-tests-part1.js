@@ -92,6 +92,25 @@ tests(
     shouldThrow: true
   },
   {
+    name: 'override',
+    code: 'OO.declareClass("Over");' +
+      'OO.declareMethod("Over", "===", function(_this, other){ return 10 });' +
+      'OO.send(OO.instantiate("Over"), "===", 3, 4);',
+    expected: 10
+  },
+  {
+    name: 'super send bad class',
+    code: 'OO.superSend("NotDefined", 3, 4);',
+    shouldThrow: true
+  },
+  {
+    name: 'super send works',
+    code: 'OO.declareClass("Super");' +
+      'var sup = OO.instantiate("Super");' +
+      'OO.superSend("Object", sup, "!==", 3);',
+    expected: true
+  },
+  {
     name: 'method declaration and send',
     code: '// def Object.add(x, y) { return x + y; }\n' +
           'OO.declareMethod("Object", "add", function(_this, x, y) { return x + y; });\n\n' +
