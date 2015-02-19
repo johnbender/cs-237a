@@ -86,6 +86,14 @@ var OO = {};
     }
   };
 
+  Class.prototype.walkIvar = function() {
+    if( this._name == "Object" ){
+      return [];
+    }
+
+    return this._ivars.concat(table[this._parent].walkIvar());
+  };
+
   ns.initializeCT = function() {
     table["Object"] = new Class({
       name: "Object",
@@ -113,6 +121,10 @@ var OO = {};
     }
 
     ivars = ivars || [];
+
+    if( table[parent] ){
+      ivars = ivars.concat(table[parent].walkIvar());
+    }
 
     var uniq = ivars.filter(function(value, index, self) {
       return self.indexOf(value) === index;

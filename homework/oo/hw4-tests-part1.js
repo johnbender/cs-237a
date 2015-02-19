@@ -71,8 +71,20 @@ tests(
   },
   {
     name: 'declare parent dup ivars',
-    code: 'OO.declareClass("Fiz", [ "x", "x" ] );',
+    code: 'OO.declareClass("Fiz", "Object", [ "x", "x" ] );',
     shouldThrow: true
+  },
+  {
+    name: 'declare parent dup parent ivars',
+    code: 'OO.declareClass("Fizz", "Object", [ "x" ] );' +
+      'OO.declareClass("Fizzed", "Fizz", [ "x" ] );',
+    shouldThrow: true
+  },
+  {
+    name: 'declare parent no duped ivars',
+    code: 'OO.declareClass("FizzGud", "Object", [ "x" ] );' +
+      'OO.declareClass("FizzedGud", "Fizz", [ "y" ] ); "Good"',
+    expected: "Good"
   },
   {
     name: 'instantiate undefined',
