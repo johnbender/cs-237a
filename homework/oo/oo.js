@@ -112,6 +112,16 @@ var OO = {};
       throw new Error( "Class `" + name  + "` already defined." );
     }
 
+    ivars = ivars || [];
+
+    var uniq = ivars.filter(function(value, index, self) {
+      return self.indexOf(value) === index;
+    });
+
+    if( uniq.length !== ivars.length ){
+      throw new Error( "duplicate instance variables" );
+    }
+
     return table[name] = new Class({
       ivars: ivars,
       name: name,
@@ -128,6 +138,10 @@ var OO = {};
   ns.instantiate = function(className) {
     var args = [].slice.call(arguments, 1);
     var cls = table[className];
+
+    if( !cls ){
+      throw new Error( "Class `" + className + "` is undefined" );
+    }
 
     return cls.init(args);
   };

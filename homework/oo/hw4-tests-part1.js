@@ -70,6 +70,16 @@ tests(
     shouldThrow: true
   },
   {
+    name: 'declare parent dup ivars',
+    code: 'OO.declareClass("Fiz", [ "x", "x" ] );',
+    shouldThrow: true
+  },
+  {
+    name: 'instantiate undefined',
+    code: 'OO.instantiate("not defined for sure");',
+    shouldThrow: true
+  },
+  {
     name: 'method declaration and send',
     code: '// def Object.add(x, y) { return x + y; }\n' +
           'OO.declareMethod("Object", "add", function(_this, x, y) { return x + y; });\n\n' +
