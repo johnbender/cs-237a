@@ -313,9 +313,14 @@ window.OO = {};
     return "try {"
       + transExprs.join(";")
       + "} catch( e ) {"
-      + "  if( e instanceof OO.ReturnJump && e._method == __method ) {"
+      + "  if( e instanceof OO.ReturnJump && e._method === __method ) {"
+      + "console.log( e );"
       +      (valVar ? valVar + " = e._value;" : "return e._value;")
+      // + "  } else if( e instanceof OO.ReturnJump && e._method !== __method ) {"
+      // + "console.log( e );"
+      // +      "throw new Error('block return outside original scope');"
       + "  } else {"
+      + "console.log( e );"
       + "    throw e;"
       + "  }"
       + "}";
@@ -329,17 +334,19 @@ window.OO = {};
     }
   }
 
-  function ensureThrow(bdyExprs, transExprs, env) {
-    if( !transExprs.length ){
+  function ensureThrow(exprs, transExprs, env) {
+    if( !transExprs.length || exprs[exprs.length - 1][0] !== "exprStmt" ){
       transExprs.push("null");
     }
 
     var last = transExprs[transExprs.length - 1];
 
-    if( last.indexOf("throw") !== 0 ) {
+    if( last.indexOf("throw") !== 0 || last.indexOf("return") !== 0 ) {
       transExprs[transExprs.length - 1] = wrapReturnJump(last, env);
     }
   }
+
+  O.methodCallId = 0;
 
   var trans = O.transAST = function( ast, env ) {
     var js = "OO.initializeCT();", send, inst, clsd, sewper, oldEnv;
@@ -398,8 +405,10 @@ window.OO = {};
         oldEnv = env;
         env = {};
 
+        O.methodCallId += 1;
+
         env.methodParent = clss[cls];
-        env.currentMethod = cls + "#" + name;
+        env.currentMethod = cls + "#" + name; // + O.methodCallId;
 
         var transExprs = bdyExprs.map(function( expr ) {
           return trans(expr, env);
@@ -408,7 +417,6 @@ window.OO = {};
         ensureThrow(bdyExprs, transExprs, env);
 
         args.unshift(THIS_STR);
-
 
         return "OO.declareMethod( '"
           + cls
