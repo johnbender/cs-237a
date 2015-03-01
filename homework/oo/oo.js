@@ -276,9 +276,10 @@ window.OO = {};
     }
   }
 
+  var THIS_STR = "__this__";
 
   var trans = O.transAST = function( ast ) {
-    var js = "OO.initializeCT();", send;
+    var js = "OO.initializeCT();", send, inst, clsd;
 
     if( ast[0] == "program" ){
       return js + ast.slice(1).map(function( ast ) {
@@ -326,7 +327,11 @@ window.OO = {};
       },
 
       [ "methodDecl", _, _, _, _], function( cls, name, args, bdyExprs ) {
-        return "OO.declareMethod( '" + cls + "', '" + name + "', function( " + args.join(",") + " ) { \n"
+        args.unshift(THIS_STR);
+        return "OO.declareMethod( '"
+          + cls
+          + "', '" + name
+          + "', function( " + args.join(",") + " ) { \n"
           + bdyExprs.map(function( expr ) {
             return trans(expr);
           })
@@ -336,7 +341,39 @@ window.OO = {};
 
       [ "return", _ ], function( expr ) {
         return "return " + trans(expr) + ";";
-      }
+      },
+
+      [ "new", _, many(_)], inst = function( name, args ) {
+        var str = "OO.instantiate( '" + name + "'";
+
+        if( args ){
+          str += "," + args.map(function( arg ) { return trans(arg); });
+        }
+
+        return str += ")";
+      },
+
+      [ "new", _], inst,
+
+      [ "getInstVar", _], function( id ) {
+        return "OO.getInstVar(" + THIS_STR + ", '" + id + "');";
+      },
+
+      [ "setInstVar", _, _], function( id, expr ) {
+        return "OO.setInstVar(" + THIS_STR + ", '" + id + "', " + trans(expr) + ");";
+      },
+
+      [ "classDecl", _, _, _], clsd = function(name, parent, ivars) {
+        var cls = "OO.declareClass('" + name + "', '" + parent + "'";
+
+        if( ivars ) {
+          cls += ", [" + ivars.map(function( ivar ) {  return "'" + ivar + "'"; }) + "]";
+        }
+
+        return cls + ");";
+      },
+
+      [ "classDecl", _, _], clsd
     ]);
   };
 
