@@ -64,7 +64,9 @@ testCase expected {
   display: none;
 }
 
-testCase syntax,
+testCase code,
+testCase ast,
+testCase translation,
 testCase actual,
 testCase exception,
 testCase expected {
@@ -72,17 +74,13 @@ testCase expected {
   white-space: pre;
 }
 
-testCase syntax::after,
-testCase ast::after {
+testCase code::after,
+testCase ast::after,
+testCase translation::after {
   font-size: 12pt;
   vertical-align: top;
   content: '\2B07';
   display: block;
-}
-
-testCase ast {
-  font-family: Monaco, monospace;
-  white-space: pre;
 }
 
 testCase expected::before,

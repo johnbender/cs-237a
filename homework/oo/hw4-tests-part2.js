@@ -4,7 +4,7 @@ OO.initializeCT();
 
 // Tests for Part II
 
-tests(
+tests(JS,
   {
     name: 'times',
     code: '// 6 * 7\n' +

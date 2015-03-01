@@ -13,7 +13,7 @@ OO.initializeCT();
 
 // Tests for Part I
 
-tests(
+tests(JS,
   {
     name: 'object equality',
     code: 'var foo = OO.instantiate("Object");\n' +

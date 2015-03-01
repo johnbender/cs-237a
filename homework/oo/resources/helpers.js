@@ -1,28 +1,6 @@
-function prettyPrintAST(L, ast) {
-  return L.prettyPrintAST ?
-    L.prettyPrintAST(ast) :
-    stringify(ast);
-}
-    
-function prettyPrintValue(L, ast) {
-  return L.prettyPrintValue ?
-    L.prettyPrintValue(ast) :
-    stringify(ast);
-}
-
 function prettyPrintJS(code) {
   return js_beautify(code);
 } 
-
-function stringify(value) {
-  if (value === undefined) {
-    return 'undefined';
-  } else if (Number.isNaN(value)) {
-    return 'NaN';
-  } else {
-    return JSON.stringify(value);
-  }
-}
 
 function arrayEquals(xs, ys) {
   if (!(xs instanceof Array && ys instanceof Array) || xs.length !== ys.length) {

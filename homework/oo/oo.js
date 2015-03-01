@@ -28,7 +28,7 @@ var OO = {};
   Class.prototype.send = function(instance, name, args, cls) {
     var parent;
 
-    cls = getClass(instance);
+    cls = cls ? table[cls] : getClass(instance);
 
     // this class doesn't implement the requested methods
     if( ! this._methods.hasOwnProperty(name) ) {
@@ -98,7 +98,8 @@ var OO = {};
   ns.initializeCT = function() {
     table = {};
 
-    table["Object"] = new Class({
+    table = {
+      "Object": new Class({
       name: "Object",
       methods: {
         initialize: function() {},
@@ -115,9 +116,9 @@ var OO = {};
           return _this !== other;
         }
       }
-    });
+      }),
 
-    table["Number"] = new Class({
+      "Number" : new Class({
       name: "Number",
       methods: {
         isNumber: function() {
@@ -142,9 +143,41 @@ var OO = {};
 
         "%": function(_this, other) {
           return _this % other;
+        },
+
+        "<": function(_this, other){
+          return _this < other;
+        },
+
+        "<=": function(_this, other){
+          return _this <= other;
+        },
+
+        ">": function(_this, other){
+          return _this > other;
+        },
+
+        ">=": function(_this, other){
+          return _this >= other;
         }
       }
-    });
+      }),
+
+      "Null" : new Class({
+        name: "Null",
+        methods: {}
+      }),
+
+      "True" : new Class({
+        name: "True",
+        methods: {}
+      }),
+
+      "False" : new Class({
+        name: "True",
+        methods: {}
+      })
+    };
   };
 
   ns.declareClass = function(name, parent, ivars) {
@@ -235,21 +268,11 @@ var OO = {};
   }
 
   function getClass( instance ) {
-    return typeof instance === "number" ? table["Number"] : table[instance._class];
-  }
-
-  function primSend(value, name, args) {
-    switch(name){
-    case "+":
-      return value + args[1];
-    case "-":
-      return value - args[1];
-    case "/":
-      return value / args[1];
-    case "*":
-      return value * args[1];
-    default:
-      return value[name].apply(value, args);
+    switch(instance) {
+    case null: return table["Null"];
+    case true: return table["True"];
+    case false: return table["False"];
+    default: return typeof instance == "number" ? table["Number"] : table[instance._class];
     }
   }
 })(OO);
