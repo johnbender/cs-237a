@@ -329,7 +329,11 @@ window.OO = {};
     }
   }
 
-  function ensureThrow(transExprs, env) {
+  function ensureThrow(bdyExprs, transExprs, env) {
+    if( !transExprs.length ){
+      transExprs.push("null");
+    }
+
     var last = transExprs[transExprs.length - 1];
 
     if( last.indexOf("throw") !== 0 ) {
@@ -401,7 +405,7 @@ window.OO = {};
           return trans(expr, env);
         });
 
-        ensureThrow(transExprs, env);
+        ensureThrow(bdyExprs, transExprs, env);
 
         args.unshift(THIS_STR);
 
@@ -454,7 +458,7 @@ window.OO = {};
 
       [ "classDecl", _, _], clsd,
 
-      [ "super", _, _], sewper = function( method, args ) {
+      [ "super", _, many(_)], sewper = function( method, args ) {
         var sup = "OO.superSend( '"
               + (env.methodParent || "Object") + "',"
               + THIS_STR + ", '"
@@ -473,6 +477,7 @@ window.OO = {};
 
       [ "true" ], function() {  return "true"; },
       [ "false" ], function() {  return "false"; },
+      [ "null" ], function() {  return "null"; },
       [ "block", _, _], function(args, exprs) {
         var transExprs;
 
@@ -488,7 +493,7 @@ window.OO = {};
 
         blk += "var __method = '" + env.currentMethod + "'";
 
-        ensureThrow(transExprs, env);
+        ensureThrow(exprs, transExprs, env);
 
         blk += transExprs.join(";");
 

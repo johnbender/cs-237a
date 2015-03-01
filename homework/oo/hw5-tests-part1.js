@@ -34,4 +34,3 @@ tests(JS,
     expected: 123
   }
 );
-
