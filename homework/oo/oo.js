@@ -164,25 +164,21 @@ window.OO = {};
       }),
 
       "Null" : new Class({
-        name: "Null",
-        methods: {}
+        name: "Null"
       }),
 
       "Boolean" : new Class({
-        name: "Boolean",
-        methods: {}
+        name: "Boolean"
       }),
 
       "True" : new Class({
         name: "True",
-        parent: "Boolean",
-        methods: {}
+        parent: "Boolean"
       }),
 
       "False" : new Class({
         name: "True",
-        parent: "Boolean",
-        methods: {}
+        parent: "Boolean"
       }),
 
       "Block": new Class({
@@ -198,6 +194,10 @@ window.OO = {};
             return _this._callable.apply(_this, args);
           }
         }
+      }),
+
+      "__Program__": new Class({
+        name: "__Program__"
       })
     };
   };
@@ -300,27 +300,69 @@ window.OO = {};
 
   var THIS_STR = "__this__", clss = {};
 
-  var trans = O.transAST = function( ast ) {
-    var js = "OO.initializeCT();", send, inst, clsd, sewper;
+  ns.ReturnJump = function( value, method ) {
+    this._value = value;
+    this._method = method;
+    this.message = "return jump from `" + method + "`, should be caught ";
+    this.name = "ReturnJump";
+  };
+
+  ns.ReturnJump.prototype = Error.prototype;
+
+  function wrapTryCatch( transExprs, valVar ) {
+    return "try {"
+      + transExprs.join(";")
+      + "} catch( e ) {"
+      + "  if( e instanceof OO.ReturnJump && e._method == __method ) {"
+      +      (valVar ? valVar + " = e._value;" : "return e._value;")
+      + "  } else {"
+      + "    throw e;"
+      + "  }"
+      + "}";
+  }
+
+  function wrapReturnJump(str, env) {
+    if( env.currentMethod ) {
+      return "throw new OO.ReturnJump(" + str + ", __method);";
+    } else {
+      return "return " + str;
+    }
+  }
+
+  function ensureThrow(transExprs, env) {
+    var last = transExprs[transExprs.length - 1];
+
+    if( last.indexOf("throw") !== 0 ) {
+      transExprs[transExprs.length - 1] = wrapReturnJump(last, env);
+    }
+  }
+
+  var trans = O.transAST = function( ast, env ) {
+    var js = "OO.initializeCT();", send, inst, clsd, sewper, oldEnv;
+
+    env = env || {};
 
     if( ast[0] == "program" ){
-      return js + ast.slice(1).map(function( ast ) {
-        return trans(ast);
+      js += ast.slice(1).map(function( subast ) {
+        return trans(subast, env);
       }).join(";");
+
+      return js;
     }
+
 
     return match.apply(window, [
       ast,
 
       ["exprStmt", _], function( expr ){
-        return trans( expr );
+        return trans( expr, env );
       },
 
       [ "send", _, _], send = function(recv, m, args){
-        var send = "OO.send(" + trans(recv) + ", '" + m + "'";
+        var send = "OO.send(" + trans(recv, env) + ", '" + m + "'";
 
         if( args ) {
-          send += (", " + args.map(function( arg) { return trans(arg); }).join(" , "));
+          send += (", " + args.map(function( arg) { return trans(arg, env); }).join(" , "));
         }
 
         send += ")";
@@ -336,7 +378,7 @@ window.OO = {};
 
       [ "varDecls", many(_)], function( decls ) {
         return decls.map(function( decl ) {
-          return "var " + decl[0] + " = " + trans(decl[1]);
+          return "var " + decl[0] + " = " + trans(decl[1], env);
         }).join( ";\n" );
       },
 
@@ -345,32 +387,44 @@ window.OO = {};
       },
 
       [ "setVar", _, _], function( name, expr ) {
-        return name + " = " + trans(expr);
+        return name + " = " + trans(expr, env);
       },
 
       [ "methodDecl", _, _, _, _], function( cls, name, args, bdyExprs ) {
-        window.currentMethodParent = clss[cls];
+        oldEnv = env;
+        env = {};
+
+        env.methodParent = clss[cls];
+        env.currentMethod = cls + "#" + name;
+
+        var transExprs = bdyExprs.map(function( expr ) {
+          return trans(expr, env);
+        });
+
+        ensureThrow(transExprs, env);
+
         args.unshift(THIS_STR);
+
+
         return "OO.declareMethod( '"
           + cls
           + "', '" + name
           + "', function( " + args.join(",") + " ) { \n"
-          + bdyExprs.map(function( expr ) {
-            return trans(expr);
-          })
+          + "var __method = '" + env.currentMethod + "';"
+          + wrapTryCatch(transExprs)
           + "})";
 
       },
 
       [ "return", _ ], function( expr ) {
-        return "return " + trans(expr) + ";";
+        return wrapReturnJump(trans(expr, env), env);
       },
 
       [ "new", _, many(_)], inst = function( name, args ) {
         var str = "OO.instantiate( '" + name + "'";
 
         if( args ){
-          str += "," + args.map(function( arg ) { return trans(arg); });
+          str += "," + args.map(function( arg ) { return trans(arg, env); });
         }
 
         return str += ")";
@@ -379,11 +433,11 @@ window.OO = {};
       [ "new", _], inst,
 
       [ "getInstVar", _], function( id ) {
-        return "OO.getInstVar(" + THIS_STR + ", '" + id + "');";
+        return "OO.getInstVar(" + THIS_STR + ", '" + id + "')";
       },
 
       [ "setInstVar", _, _], function( id, expr ) {
-        return "OO.setInstVar(" + THIS_STR + ", '" + id + "', " + trans(expr) + ");";
+        return "OO.setInstVar(" + THIS_STR + ", '" + id + "', " + trans(expr, env) + ")";
       },
 
       [ "classDecl", _, _, _], clsd = function(name, parent, ivars) {
@@ -402,12 +456,12 @@ window.OO = {};
 
       [ "super", _, _], sewper = function( method, args ) {
         var sup = "OO.superSend( '"
-              + (window.currentMethodParent || "Object") + "',"
+              + (env.methodParent || "Object") + "',"
               + THIS_STR + ", '"
               + method + "'";
 
         if( args ){
-          sup += "," + args.map(function( arg ) { return trans(arg); });
+          sup += "," + args.map(function( arg ) { return trans(arg, env); });
         }
 
         return sup + ")";
@@ -415,13 +469,15 @@ window.OO = {};
 
       [ "super", _ ], sewper,
 
+      [ "this" ], function() {  return THIS_STR },
+
       [ "true" ], function() {  return "true"; },
       [ "false" ], function() {  return "false"; },
       [ "block", _, _], function(args, exprs) {
         var transExprs;
 
         transExprs = exprs.map(function( expr ) {
-          return trans(expr);
+          return trans(expr, env);
         });
 
         var blk = "OO.instantiate('Block', function(";
@@ -430,13 +486,9 @@ window.OO = {};
 
         blk += "){";
 
-        console.log(transExprs);
+        blk += "var __method = '" + env.currentMethod + "'";
 
-        var last = transExprs[transExprs.length - 1];
-
-        if( last.indexOf("return") == -1 ) {
-          transExprs[transExprs.length - 1] = "return " + last;
-        }
+        ensureThrow(transExprs, env);
 
         blk += transExprs.join(";");
 

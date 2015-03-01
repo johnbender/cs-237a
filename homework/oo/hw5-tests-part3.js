@@ -20,7 +20,7 @@ tests(O,
     expected: 111
   },
   {
-    name: 'non-local return (1/2)',
+    name: 'non-local return first',
     code: 'def True then tb else fb = tb.call();\n' +
           'def False then tb else fb = fb.call();\n\n' +
           'def Number.fact() {\n' +
@@ -34,7 +34,7 @@ tests(O,
     expected: 120
   },
   {
-    name: 'non-local return (2/2)',
+    name: 'non-local return second',
     code: 'def Object.m() {\n' +
           '  var b = { return 5; };\n' +
           ' return this.n(b) * 2;\n' +
@@ -47,4 +47,3 @@ tests(O,
     expected: 5
   }
 );
-
