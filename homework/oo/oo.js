@@ -1,7 +1,7 @@
-var OO = {};
+window.OO = {};
 
 // TODO all the table[_] refs can be replaced by referencing the object itself
-(function( ns ) {
+(function( ns, O ) {
   var table = {};
 
   function Class( config ) {
@@ -100,67 +100,67 @@ var OO = {};
 
     table = {
       "Object": new Class({
-      name: "Object",
-      methods: {
-        initialize: function() {},
+        name: "Object",
+        methods: {
+          initialize: function() {},
 
-        isNumber: function() {
-          return false;
-        },
+          isNumber: function() {
+            return false;
+          },
 
-        "===": function(_this, other) {
-          return _this === other;
-        },
+          "===": function(_this, other) {
+            return _this === other;
+          },
 
-        "!==": function(_this, other) {
-          return _this !== other;
+          "!==": function(_this, other) {
+            return _this !== other;
+          }
         }
-      }
       }),
 
       "Number" : new Class({
-      name: "Number",
-      methods: {
-        isNumber: function() {
-          return true;
-        },
+        name: "Number",
+        methods: {
+          isNumber: function() {
+            return true;
+          },
 
-        "+": function(_this, other) {
-          return _this + other;
-        },
+          "+": function(_this, other) {
+            return _this + other;
+          },
 
-        "-": function(_this, other) {
-          return _this - other;
-        },
+          "-": function(_this, other) {
+            return _this - other;
+          },
 
-        "*": function(_this, other) {
-          return _this * other;
-        },
+          "*": function(_this, other) {
+            return _this * other;
+          },
 
-        "/": function(_this, other) {
-          return _this / other;
-        },
+          "/": function(_this, other) {
+            return _this / other;
+          },
 
-        "%": function(_this, other) {
-          return _this % other;
-        },
+          "%": function(_this, other) {
+            return _this % other;
+          },
 
-        "<": function(_this, other){
-          return _this < other;
-        },
+          "<": function(_this, other){
+            return _this < other;
+          },
 
-        "<=": function(_this, other){
-          return _this <= other;
-        },
+          "<=": function(_this, other){
+            return _this <= other;
+          },
 
-        ">": function(_this, other){
-          return _this > other;
-        },
+          ">": function(_this, other){
+            return _this > other;
+          },
 
-        ">=": function(_this, other){
-          return _this >= other;
+          ">=": function(_this, other){
+            return _this >= other;
+          }
         }
-      }
       }),
 
       "Null" : new Class({
@@ -275,4 +275,200 @@ var OO = {};
     default: return typeof instance == "number" ? table["Number"] : table[instance._class];
     }
   }
-})(OO);
+
+
+  var trans = O.transAST = function( ast ) {
+    var js = "OO.initializeCT();";
+
+    if( ast[0] == "program" ){
+      return js + ast.slice(1).map(function( ast ) {
+        return trans(ast);
+      }).join(";");
+    }
+
+    return match.apply(window, [
+      ast,
+
+      ["exprStmt", _], function( expr ){
+        return trans( expr );
+      },
+
+      [ "send", _, _, many(_) ], function(recv, m, args){
+        return "OO.send(" + trans(recv) + ", '" + m + "', "
+          + args.map(function( arg) { return trans(arg); }).join(" , ")
+          + ")";
+      },
+
+      [ "number", _], function( n ){
+        return n.toString();
+      }
+    ]);
+  };
+
+
+  try{ global._ = "foo"; } catch(e) { window._ = "foo"; }
+
+  function when( pred ){
+    return {
+      pred: pred
+    };
+  }
+
+  function many( pred ){
+    var newPred;
+
+    // a `when` is used as the predicate
+    if( pred.pred ){
+      newPred = pred.pred;
+    }
+
+    // a wildcard is used as a predicate
+    if( pred === window._ ) {
+      newPred = function( value ) {
+        return true;
+      };
+    }
+
+    // otherwise expect an array of matches
+    newPred = newPred || function( value ) {
+      return matchArray(value, [].slice.call(pred), []);
+    };
+
+    return {
+      many: newPred
+    };
+  }
+
+  function isValue(e) {
+    if( typeof e === "number" || typeof e === "string" ){
+      return true;
+    }
+  }
+
+  function matchMany(values, pred) {
+    var predBindings, result;
+
+
+    result = {
+      binding: [],
+      rest: [].slice.call(values)
+    };
+
+    while(values.length) {
+      var v = values.shift();
+
+      predBindings = pred(v);
+
+      if( predBindings ){
+        if( predBindings.length ){
+          result.binding = result.binding.concat(predBindings);
+        } else {
+          result.binding.push(v);
+        }
+
+        result.rest.shift();
+      } else {
+        return result;
+      }
+    }
+
+    return result;
+  }
+
+  function matchArray(value, check, bindings) {
+    // if both are empty return the bindings
+    if( !value.length && !check.length ){
+      return bindings;
+    }
+
+    var v, c;
+
+    v = value.shift();
+    c = check.shift();
+
+    // if either is undefined and they are not both undefined (value)
+    if( c === undefined || v === undefined || c === null || v === null ) {
+      if( c == v ){
+        return bindings;
+      } else {
+        return false;
+      }
+    }
+
+    // the clause was a `when` and the pred doesn't match
+    if ( c.pred && !c.pred(v) ){
+      return false;
+    }
+    // we're not looking at an array or object
+    // c is not a many predicate
+    // c is not a predicate
+    // c is not a wildcard
+    // the value and check don't match
+    if( isValue(v) && !c.many && !c.pred && c !== window._ && c !== v ){
+      return false;
+    }
+
+    // if it's a wild card, add the binding regardless of value
+    if( c === window._ ) {
+      bindings.push(v);
+    }
+
+    // if we have a predicate and it matchs add the binding
+    if( c.pred && c.pred(v) ){
+      bindings.push(v);
+    }
+
+    // we allow many to not match, ("zero or more")
+    // though the pattern matching might still succeed
+    if ( c.many ){
+      value.unshift(v);
+      var result = matchMany(value, c.many);
+
+      // push the result onto the bindings as an array
+      bindings.push(result.binding);
+
+      // process what's left recursively
+      value = result.rest;
+    }
+
+    // nested array should recurse with nested arrays and append the bindings
+    // avoid situations where we've already bound all of v
+    if( !c.many && Array.isArray(v) && bindings.indexOf(v) == -1){
+      bindings = bindings.concat(matchArray(v, c, bindings));
+    }
+
+    // otherwise we assume a literal match and proceed with the rest
+    return matchArray(value, check, bindings);
+  }
+
+  function match(val /* , pat1, fun1, pat2, fun2, ... */) {
+    var value, clauses, check, exec, bindings, wrappedV, wrappedC;
+
+    clauses = [].slice.call(arguments, 1);
+
+    while( clauses.length ){
+      value = [].slice.call(val);
+
+      check = clauses.shift();
+      exec = clauses.shift();
+
+      if( exec == undefined ){
+        throw new Error("clauses are mismatched");
+      }
+
+      // NOTE check is wrapped in concert with value
+      wrappedV = !Array.isArray(value) ? [value] : value;
+      wrappedC = !Array.isArray(value) ? [check] : check;
+
+      // otherwise assume array
+      bindings = matchArray(wrappedV, wrappedC, []);
+
+      // if bindings were returned we have a match, invoke
+      if( bindings ){
+        return exec.apply(window, bindings);
+      }
+    }
+
+    throw new Error("no match found");
+  }
+})(OO, O);
