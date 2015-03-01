@@ -24,6 +24,13 @@ tests(O,
     expected: 6
   },
   {
+    name: 'method decl, just send',
+    code: 'def Number.m() { return 42; }\n' +
+          '3.m()',
+    expected: 42
+  },
+
+  {
     name: 'method decl, new, and send',
     code: 'def Object.m() { return 42; }\n' +
           'new Object().m()',
@@ -59,4 +66,3 @@ tests(O,
     expected: 42
   }
 );
-

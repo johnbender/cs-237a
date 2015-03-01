@@ -278,7 +278,7 @@ window.OO = {};
 
 
   var trans = O.transAST = function( ast ) {
-    var js = "OO.initializeCT();";
+    var js = "OO.initializeCT();", send;
 
     if( ast[0] == "program" ){
       return js + ast.slice(1).map(function( ast ) {
@@ -293,14 +293,49 @@ window.OO = {};
         return trans( expr );
       },
 
-      [ "send", _, _, many(_) ], function(recv, m, args){
-        return "OO.send(" + trans(recv) + ", '" + m + "', "
-          + args.map(function( arg) { return trans(arg); }).join(" , ")
-          + ")";
+      [ "send", _, _], send = function(recv, m, args){
+        var send = "OO.send(" + trans(recv) + ", '" + m + "'";
+
+        if( args ) {
+          send += (", " + args.map(function( arg) { return trans(arg); }).join(" , "));
+        }
+
+        send += ")";
+
+        return send;
       },
+
+      [ "send", _, _, many(_) ], send,
 
       [ "number", _], function( n ){
         return n.toString();
+      },
+
+      [ "varDecls", many(_)], function( decls ) {
+        return decls.map(function( decl ) {
+          return "var " + decl[0] + " = " + trans(decl[1]);
+        }).join( ";\n" );
+      },
+
+      [ "getVar", _], function( name ) {
+        return name;
+      },
+
+      [ "setVar", _, _], function( name, expr ) {
+        return name + " = " + trans(expr);
+      },
+
+      [ "methodDecl", _, _, _, _], function( cls, name, args, bdyExprs ) {
+        return "OO.declareMethod( '" + cls + "', '" + name + "', function( " + args.join(",") + " ) { \n"
+          + bdyExprs.map(function( expr ) {
+            return trans(expr);
+          })
+          + "})";
+
+      },
+
+      [ "return", _ ], function( expr ) {
+        return "return " + trans(expr) + ";";
       }
     ]);
   };
