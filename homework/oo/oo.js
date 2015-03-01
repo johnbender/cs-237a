@@ -183,6 +183,21 @@ window.OO = {};
         name: "True",
         parent: "Boolean",
         methods: {}
+      }),
+
+      "Block": new Class({
+        name: "Block",
+        methods: {
+          initialize: function(_this, callable) {
+            _this._callable = callable;
+          },
+
+          call: function(_this) {
+            var args = [].slice.call(arguments, 1);
+
+            return _this._callable.apply(_this, args);
+          }
+        }
       })
     };
   };
@@ -401,7 +416,32 @@ window.OO = {};
       [ "super", _ ], sewper,
 
       [ "true" ], function() {  return "true"; },
-      [ "false" ], function() {  return "false"; }
+      [ "false" ], function() {  return "false"; },
+      [ "block", _, _], function(args, exprs) {
+        var transExprs;
+
+        transExprs = exprs.map(function( expr ) {
+          return trans(expr);
+        });
+
+        var blk = "OO.instantiate('Block', function(";
+
+        blk += args.join(", ");
+
+        blk += "){";
+
+        console.log(transExprs);
+
+        var last = transExprs[transExprs.length - 1];
+
+        if( last.indexOf("return") == -1 ) {
+          transExprs[transExprs.length - 1] = "return " + last;
+        }
+
+        blk += transExprs.join(";");
+
+        return blk + "})";
+      },
     ]);
   };
 
