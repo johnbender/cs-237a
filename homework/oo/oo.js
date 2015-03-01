@@ -168,13 +168,20 @@ window.OO = {};
         methods: {}
       }),
 
+      "Boolean" : new Class({
+        name: "Boolean",
+        methods: {}
+      }),
+
       "True" : new Class({
         name: "True",
+        parent: "Boolean",
         methods: {}
       }),
 
       "False" : new Class({
         name: "True",
+        parent: "Boolean",
         methods: {}
       })
     };
@@ -276,10 +283,10 @@ window.OO = {};
     }
   }
 
-  var THIS_STR = "__this__";
+  var THIS_STR = "__this__", clss = {};
 
   var trans = O.transAST = function( ast ) {
-    var js = "OO.initializeCT();", send, inst, clsd;
+    var js = "OO.initializeCT();", send, inst, clsd, sewper;
 
     if( ast[0] == "program" ){
       return js + ast.slice(1).map(function( ast ) {
@@ -327,6 +334,7 @@ window.OO = {};
       },
 
       [ "methodDecl", _, _, _, _], function( cls, name, args, bdyExprs ) {
+        window.currentMethodParent = clss[cls];
         args.unshift(THIS_STR);
         return "OO.declareMethod( '"
           + cls
@@ -366,6 +374,8 @@ window.OO = {};
       [ "classDecl", _, _, _], clsd = function(name, parent, ivars) {
         var cls = "OO.declareClass('" + name + "', '" + parent + "'";
 
+        clss[name] = parent;
+
         if( ivars ) {
           cls += ", [" + ivars.map(function( ivar ) {  return "'" + ivar + "'"; }) + "]";
         }
@@ -373,7 +383,25 @@ window.OO = {};
         return cls + ");";
       },
 
-      [ "classDecl", _, _], clsd
+      [ "classDecl", _, _], clsd,
+
+      [ "super", _, _], sewper = function( method, args ) {
+        var sup = "OO.superSend( '"
+              + (window.currentMethodParent || "Object") + "',"
+              + THIS_STR + ", '"
+              + method + "'";
+
+        if( args ){
+          sup += "," + args.map(function( arg ) { return trans(arg); });
+        }
+
+        return sup + ")";
+      },
+
+      [ "super", _ ], sewper,
+
+      [ "true" ], function() {  return "true"; },
+      [ "false" ], function() {  return "false"; }
     ]);
   };
 
