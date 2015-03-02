@@ -45,5 +45,29 @@ tests(O,
           '}\n\n' +
           'new Object().m()',
     expected: 5
-  }
+  },
+
+      {
+        name: 'inst new class',
+        code: 'var x = new Class("Baz", "Object"); \n'
+          + 'x.define("biz", { 5 }); \n'
+          + 'x.inst().biz();',
+        expected: 5
+      },
+
+      {
+        name: 'multi-arg block 1',
+        code: '{ x, y | x * y }.call(6, 7)',
+        expected: 42
+      },
+
+      {
+        name: 'multi-arg block 2',
+        code: 'def Object.blam() { return 5; } \n' +
+          'def Object.blim() { return 6; }\n' +
+          '{ x | x.blam(); x.blim(); }.call(new Object())',
+        expected: 6
+      }
+
+
 );

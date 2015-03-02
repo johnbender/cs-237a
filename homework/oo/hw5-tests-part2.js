@@ -198,5 +198,10 @@ tests(O,
           ' \n' +
           ' sum;\n',
         expected: 55
+      },
+      {
+        name: 'multi-arg blocks',
+        code: 'false',
+        expected: true
       }
 );

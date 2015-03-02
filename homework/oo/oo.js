@@ -196,6 +196,29 @@ window.OO = {};
         }
       }),
 
+      "Class": new Class({
+        name: "Class",
+        methods: {
+          intialize: function(_this, name, parent ) {
+            debugger ;
+            return ns.declareClass(name, parent, [].slice.call(arguments, 2));
+          },
+
+          define: function(_this, name, block ) {
+            debugger ;
+            ns.declareMethod(_this._class, name, block._callable);
+          },
+
+          inst: function(_this) {
+            var args = [].slice.call(arguments, 1);
+
+            debugger;
+            args.unshift(_this._class);
+            return ns.instantiate.apply(window, args);
+          }
+        }
+      }),
+
       "__Program__": new Class({
         name: "__Program__"
       })
@@ -486,6 +509,7 @@ window.OO = {};
       [ "true" ], function() {  return "true"; },
       [ "false" ], function() {  return "false"; },
       [ "null" ], function() {  return "null"; },
+      [ "string", _ ], function(str) {  return "'" + str + "'"; },
       [ "block", _, _], function(args, exprs) {
         var transExprs;
 
