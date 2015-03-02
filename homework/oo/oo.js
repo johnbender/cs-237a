@@ -369,7 +369,7 @@ window.OO = {};
     }
   }
 
-  O.methodCallId = 0;
+  ns.methodCallId = 0;
 
   var trans = O.transAST = function( ast, env ) {
     var js = "OO.initializeCT();", send, inst, clsd, sewper, oldEnv;
@@ -428,10 +428,8 @@ window.OO = {};
         oldEnv = env;
         env = {};
 
-        O.methodCallId += 1;
-
         env.methodParent = clss[cls];
-        env.currentMethod = cls + "#" + name; // + O.methodCallId;
+        env.currentMethod = cls + "#" + name;
 
         var transExprs = bdyExprs.map(function( expr ) {
           return trans(expr, env);
@@ -445,7 +443,7 @@ window.OO = {};
           + cls
           + "', '" + name
           + "', function( " + args.join(",") + " ) { \n"
-          + "var __method = '" + env.currentMethod + "';"
+          + "var __method = '" + env.currentMethod + "-' + OO.methodCallId++;"
           + wrapTryCatch(transExprs)
           + "})";
 
@@ -522,8 +520,6 @@ window.OO = {};
         blk += args.join(", ");
 
         blk += "){";
-
-        blk += "var __method = '" + env.currentMethod + "'";
 
         ensureThrow(exprs, transExprs, env);
 
