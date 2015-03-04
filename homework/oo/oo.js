@@ -98,6 +98,8 @@ window.OO = {};
   ns.initializeCT = function() {
     table = {};
 
+    var def;
+
     table = {
       "Object": new Class({
         name: "Object",
@@ -186,10 +188,14 @@ window.OO = {};
         methods: {
           initialize: function(_this, callable) {
             _this._callable = callable;
+            _this._callable.block = true;
           },
 
           call: function(_this) {
             var args = [].slice.call(arguments, 1);
+
+            // make the __block_this__ undefined
+            args.unshift(undefined);
 
             return _this._callable.apply(_this, args);
           }
@@ -198,22 +204,27 @@ window.OO = {};
 
       "Class": new Class({
         name: "Class",
+        ivars: ["name"],
         methods: {
-          intialize: function(_this, name, parent ) {
-            debugger ;
-            return ns.declareClass(name, parent, [].slice.call(arguments, 2));
+          initialize: function(_this, name, parent ) {
+            _this.name = name;
+            _this.parent = parent;
+
+            return ns.declareClass(name, parent, [].slice.call(arguments, 3));
           },
 
-          define: function(_this, name, block ) {
-            debugger ;
-            ns.declareMethod(_this._class, name, block._callable);
+          define: def = function(_this, name, block ) {
+            // treat block callable as a normal method
+            ns.declareMethod(_this.name, name, block._callable);
           },
+
+          definesAs: def,
 
           inst: function(_this) {
             var args = [].slice.call(arguments, 1);
 
-            debugger;
-            args.unshift(_this._class);
+            args.unshift(_this.name);
+
             return ns.instantiate.apply(window, args);
           }
         }
@@ -317,11 +328,14 @@ window.OO = {};
     case null: return table["Null"];
     case true: return table["True"];
     case false: return table["False"];
-    default: return typeof instance == "number" ? table["Number"] : table[instance._class];
+    default:
+      return typeof instance == "number" ? table["Number"] : table[instance._class];
     }
   }
 
-  var THIS_STR = "__this__", clss = {};
+  var ARG_THIS_STR = "__this__";
+  var PARAM_THIS_STR = "__block_this__ || " + ARG_THIS_STR;
+  var clss = {};
 
   ns.ReturnJump = function( value, method ) {
     this._value = value;
@@ -337,13 +351,8 @@ window.OO = {};
       + transExprs.join(";")
       + "} catch( e ) {"
       + "  if( e instanceof OO.ReturnJump && e._method === __method ) {"
-      + "console.log( e );"
       +      (valVar ? valVar + " = e._value;" : "return e._value;")
-      // + "  } else if( e instanceof OO.ReturnJump && e._method !== __method ) {"
-      // + "console.log( e );"
-      // +      "throw new Error('block return outside original scope');"
       + "  } else {"
-      + "console.log( e );"
       + "    throw e;"
       + "  }"
       + "}";
@@ -437,7 +446,7 @@ window.OO = {};
 
         ensureThrow(bdyExprs, transExprs, env);
 
-        args.unshift(THIS_STR);
+        args.unshift(ARG_THIS_STR);
 
         return "OO.declareMethod( '"
           + cls
@@ -466,11 +475,11 @@ window.OO = {};
       [ "new", _], inst,
 
       [ "getInstVar", _], function( id ) {
-        return "OO.getInstVar(" + THIS_STR + ", '" + id + "')";
+        return "OO.getInstVar(" + PARAM_THIS_STR + ", '" + id + "')";
       },
 
       [ "setInstVar", _, _], function( id, expr ) {
-        return "OO.setInstVar(" + THIS_STR + ", '" + id + "', " + trans(expr, env) + ")";
+        return "OO.setInstVar(" + PARAM_THIS_STR + ", '" + id + "', " + trans(expr, env) + ")";
       },
 
       [ "classDecl", _, _, _], clsd = function(name, parent, ivars) {
@@ -490,7 +499,7 @@ window.OO = {};
       [ "super", _, many(_)], sewper = function( method, args ) {
         var sup = "OO.superSend( '"
               + (env.methodParent || "Object") + "',"
-              + THIS_STR + ", '"
+              + PARAM_THIS_STR + ", '"
               + method + "'";
 
         if( args ){
@@ -502,7 +511,7 @@ window.OO = {};
 
       [ "super", _ ], sewper,
 
-      [ "this" ], function() {  return THIS_STR },
+      [ "this" ], function() {  return PARAM_THIS_STR; },
 
       [ "true" ], function() {  return "true"; },
       [ "false" ], function() {  return "false"; },
@@ -517,6 +526,8 @@ window.OO = {};
 
         var blk = "OO.instantiate('Block', function(";
 
+        args.unshift("__block_this__");
+
         blk += args.join(", ");
 
         blk += "){";
@@ -530,6 +541,8 @@ window.OO = {};
     ]);
   };
 
+  window.__this__ = undefined;
+  window.__block_this__ = undefined;
 
   try{ global._ = "foo"; } catch(e) { window._ = "foo"; }
 

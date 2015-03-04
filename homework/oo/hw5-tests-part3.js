@@ -47,27 +47,74 @@ tests(O,
     expected: 5
   },
 
-      {
-        name: 'inst new class',
-        code: 'var x = new Class("Baz", "Object"); \n'
-          + 'x.define("biz", { 5 }); \n'
-          + 'x.inst().biz();',
-        expected: 5
-      },
+  {
+    name: 'multi-arg block 1',
+    code: '{ x, y | x * y }.call(6, 7)',
+    expected: 42
+  },
 
-      {
-        name: 'multi-arg block 1',
-        code: '{ x, y | x * y }.call(6, 7)',
-        expected: 42
-      },
+  {
+    name: 'multi-arg block 2',
+    code: 'def Object.blam() { return 5; } \n' +
+      'def Object.blim() { return 6; }\n' +
+      '{ x | x.blam(); x.blim(); }.call(new Object())',
+    expected: 6
+  },
 
-      {
-        name: 'multi-arg block 2',
-        code: 'def Object.blam() { return 5; } \n' +
-          'def Object.blim() { return 6; }\n' +
-          '{ x | x.blam(); x.blim(); }.call(new Object())',
-        expected: 6
-      }
+  {
+    name: 'inst new class',
+    code: 'var x = new Class("Baz", "Object"); \n'
+      + 'x.define("biz", { 5 }); \n'
+      + 'x.inst().biz();',
+    expected: 5
+  },
 
+  {
+    name: 'class decl + method decls + this',
+    code: 'var aclass = new Class("A", "Object");\n' +
+      'aclass.define("foo", { this === 1 });\n' +
+      'aclass.inst().foo()',
+    expected: false
+  },
 
+  {
+    name: 'class decl + method decls + super send + class obj',
+    code: 'var aclass = new Class("A", "Object");\n' +
+      'var bclass = new Class("B", "A"); \n' +
+      'aclass.define("foo", { 1 });\n' +
+      'bclass.define("foo", { super.foo() + 41 });\n' +
+      'bclass.inst().foo()',
+    expected: 42
+  },
+  {
+    name: 'class decl + ivars + this',
+    code: 'var aclass = new Class("C", "Object", "prop");\n' +
+      'aclass.define("initialize", { prop | this.prop = prop; });\n' +
+      'aclass.define("foo", { this.prop });\n' +
+      'aclass.inst(1).foo()',
+    expected: 1
+  },
+  {
+    name: 'class decl internal define',
+    code: 'var aclass = new Class("D", "Object", "prop");\n' +
+      'var bclass = new Class("E", "Object"); \n' +
+      'aclass.define("initialize", { prop | \n' +
+      '  this.prop = prop; \n' +
+      '});\n' +
+
+      'bclass.define("deffora", { \n' +
+      '  aclass.define("bar", { this.prop });\n' +
+      '});\n' +
+      'bclass.inst().deffora(); aclass.inst(1).bar()',
+    expected: 1
+  },
+  {
+    name: 'azucar',
+    code: 'var aclass = new Class("A", "Object");\n' +
+      'aclass defines "foo" as { \n' +
+      '  this === 1\n' +
+      '}; \n' +
+      'aclass.inst().foo();',
+    expected: false
+  }
 );
