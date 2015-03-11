@@ -6,16 +6,47 @@
 var globalVarCounter = 0;
 
 Rule.prototype.makeCopyWithFreshVarNames = function() {
-  var s = {}, newHead, newBody;
+  var env = {}, newHead, newBody;
 
-  newHead = this.head.rewrite(s);
+  newHead = this.head.__freshen(env);
 
   newBody = this.body.map(function(clause) {
-    return clause.rewrite(s);
+    return clause.__freshen(env);
   });
 
   return new Rule(newHead, newBody);
 };
+
+Clause.prototype.__freshen = function(env) {
+  var newArgs = [];
+
+  if(this.args){
+    newArgs = this.args.map(function( arg ) {
+      return arg.__freshen(env);
+    });
+  }
+
+  return new Clause(this.name, newArgs);
+};
+
+Var.prototype.__freshen = function(env) {
+  var newName;
+
+  // if we've already seen this variable use the mapping
+  if( env[this.name] ){
+    return new Var(env[this.name]);
+  }
+
+  // fresh var
+  newName = this.name + "_" + (globalVarCounter++);
+
+  // keep track of the mapping
+  env[this.name] = newName;
+
+  return new Var(newName);
+};
+
+
 
 Clause.prototype.rewrite = function(subst) {
   var newArgs = [];
@@ -30,20 +61,12 @@ Clause.prototype.rewrite = function(subst) {
 };
 
 Var.prototype.rewrite = function(subst) {
-  var newName;
 
-  // if we've already seen this variable use the mapping
-  if( subst[this.name] ){
-    return new Var(subst[this.name]);
+  if( subst.lookup(this.name) ){
+    return subst.lookup(this.name);
   }
 
-  // fresh var
-  newName = this.name + "_" + (globalVarCounter++);
-
-  // keep track of the mapping
-  subst[this.name] = newName;
-
-  return new Var(newName);
+  return this;
 };
 
 // -----------------------------------------------------------------------------

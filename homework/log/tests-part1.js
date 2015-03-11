@@ -42,7 +42,7 @@ tests(
     expected: new Var("X")
   },
   {
-    name: 'rewrite var (2/3)',
+    name: 'rewrite var snd',
     code: 'var s = new Subst().bind("X", new Clause("foo"));\n' +
           'new Var("X").rewrite(s);',
     expected: new Clause("foo")
