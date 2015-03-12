@@ -74,7 +74,41 @@ Var.prototype.rewrite = function(subst) {
 // -----------------------------------------------------------------------------
 
 Subst.prototype.unify = function(term1, term2) {
-  throw new TODO("Subst.prototype.unify not implemented");
+  if( term1.constructor == Var && term2.constructor == Var ){
+    if( term1.name !== term2.name ){
+      this.bind(term1.name, term2);
+    }
+  }
+
+  if( term1.constructor == Var && term2.constructor == Clause ){
+    this.bind(term1.name, term2);
+  }
+
+  if( term1.constructor == Clause && term2.constructor == Var ){
+    this.bind(term2.name, term1);
+  }
+
+  if( term1.constructor == Clause && term2.constructor == Clause ){
+    if( term1.args.length !== term2.args.length || term1.name !== term2.name ){
+      throw new Error( 'unification failed' );
+    }
+
+    term1.args.forEach(function( clause1, i ) {
+      var clause2 = term2.args[i];
+
+      clause1.rewrite(this);
+      clause2.rewrite(this);
+
+      this.unify(clause1, clause2);
+    }.bind(this));
+  }
+
+  // go back and make sure to substitute on the right hand side
+  for( var b in this.bindings ){
+    this.bindings[b] = this.bindings[b].rewrite(this);
+  }
+
+  return this; // throw new TODO("Subst.prototype.unify not implemented");
 };
 
 // -----------------------------------------------------------------------------

@@ -34,7 +34,7 @@ tests(
     shouldThrow: true
   },
   {
-    name: 'unify(Clause, Clause) (3/5)',
+    name: 'unify(Clause, Clause) third',
     code: 'new Subst().unify(new Clause("foo", [new Var("X")]),\n' +
           '                  new Clause("foo", [new Clause("bar", [new Clause("baz")])]));',
     expected: new Subst().bind("X", new Clause("bar", [new Clause("baz")]))
@@ -47,11 +47,10 @@ tests(
                          .bind("Y", new Clause("baz"))
   },
   {
-    name: 'unify(Clause, Clause) (5/5)',
+    name: 'unify(Clause, Clause) fifth',
     code: 'new Subst().unify(new Clause("f", [new Var("X"), new Var("Y")]),\n' +
           '                  new Clause("f", [new Clause("a"), new Var("X")]));',
     expected: new Subst().bind("X", new Clause("a"))
                          .bind("Y", new Clause("a"))
   }
 );
-
