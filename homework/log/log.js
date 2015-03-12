@@ -108,7 +108,7 @@ Subst.prototype.unify = function(term1, term2) {
     this.bindings[b] = this.bindings[b].rewrite(this);
   }
 
-  return this; // throw new TODO("Subst.prototype.unify not implemented");
+  return this;
 };
 
 // -----------------------------------------------------------------------------
@@ -116,5 +116,60 @@ Subst.prototype.unify = function(term1, term2) {
 // -----------------------------------------------------------------------------
 
 Program.prototype.solve = function() {
-  throw new TODO("Program.prototype.solve not implemented");
+  return new Solution(this.rules, this.query);
+};
+
+var Solution = function( rules, query ) {
+  this._rules = rules;
+  this._query = query;
+};
+
+// TODO  restrict the rules that can be used for further subst
+Solution.prototype.next = function() {
+  var subst = new Subst();
+  var i = 0, j, rule, query, success, substClone, used = [];
+
+  while(query = this._query[i]){
+    success = false;
+    j = 0;
+
+    while(rule = this._rules[j]){
+
+      substClone = subst.clone();
+
+      try {
+        // try to unify, record on success
+        subst = substClone.unify(query, rule.head);
+
+        this._query.concat(rule.body);
+
+        // if the unification doesn't throw an exception
+        success = true;
+
+        // store rules used
+        used.push(rule);
+
+        // move on to the next query
+        break;
+      } catch (e) {
+        // if unification fails for this this rule, move on
+        j++;
+      }
+    }
+
+    // if we were unable to find a rule which unified with
+    // the current query then fail, there are no solutions
+    if( ! success ){
+      return false;
+    }
+
+    i++;
+  }
+
+  // on success remove the first used rule
+  this._rules.splice(this._rules.indexOf(used[0]), 1);
+
+  console.log(this._rules);
+
+  return subst;
 };

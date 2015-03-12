@@ -1,13 +1,13 @@
 tests(
   L,
   {
-    name: 'duh (1/3)',
+    name: 'duh first',
     code: 'p.\n' +
           'p?',
     expected: makeIterator({})
   },
   {
-    name: 'duh (2/3)',
+    name: 'duh second',
     code: 'p.\n' +
           'q?',
     expected: makeIterator()
@@ -183,4 +183,3 @@ tests(
     )
   }
 );
-
