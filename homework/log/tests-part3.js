@@ -34,8 +34,8 @@ tests(
     code: 'sick(joe).\n' +
           'sick(frank).\n' +
           'sick(eddie).\n' +
-          'tired(joe).\n' +
           'tired(eddie).\n' +
+          'tired(joe).\n' +
           'sick(X), tired(X)?',
     expected: makeIterator(
       { X: new Clause("joe") },

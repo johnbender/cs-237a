@@ -122,26 +122,49 @@ Program.prototype.solve = function() {
 var Solution = function( rules, query ) {
   this._rules = rules;
   this._query = query;
+  this._skip = [];
 };
 
 // TODO  restrict the rules that can be used for further subst
-Solution.prototype.next = function() {
+Solution.prototype.next = function( skip ) {
   var subst = new Subst();
-  var i = 0, j, rule, query, success, substClone, used = [];
+  var i = 0, j, clause, rule, success, substClone, used = [], rules, query, result, skip;
 
-  while(query = this._query[i]){
+  // dupe the rules, query
+  rules = this._rules;
+  query = this._query.slice();
+  skip = skip || this._skip.slice();
+
+  while(clause = query[i]){
     success = false;
     j = 0;
 
-    while(rule = this._rules[j]){
-
+    while(rule = rules[j]){
+      j++;
       substClone = subst.clone();
 
       try {
         // try to unify, record on success
-        subst = substClone.unify(query, rule.head);
+        result = substClone.unify(clause, rule.head);
 
-        this._query.concat(rule.body);
+        var path = used.slice();
+
+        path.push(rule);
+
+        if( skip.find(path) ){
+          debugger;
+          continue;
+        }
+
+        subst = result;
+
+        query = query.concat(rule.body);
+
+        // update everything else with the new binding, this forces
+        // any query considered later to respect the bindings found here
+        query = query.map(function( q ) {
+          return q.rewrite(subst);
+        });
 
         // if the unification doesn't throw an exception
         success = true;
@@ -153,23 +176,72 @@ Solution.prototype.next = function() {
         break;
       } catch (e) {
         // if unification fails for this this rule, move on
-        j++;
+        continue;
       }
     }
 
     // if we were unable to find a rule which unified with
-    // the current query then fail, there are no solutions
-    if( ! success ){
+    // the current query and it's the first rule
+    // then fail, there are no solutions
+    if( ! success && i == 0 ){
+      debugger;
       return false;
+    }
+
+    // if we were unable to find a rule which unified with
+    // the current query and we had some success, start over
+    // but with the first rule used appended to the end of the rules
+    if( ! success && i >= 1 ){
+      if( used.length ){
+        skip.push(used);
+      }
+
+      debugger;
+      return this.next( skip );
     }
 
     i++;
   }
 
-  // on success remove the first used rule
-  this._rules.splice(this._rules.indexOf(used[0]), 1);
+  // on success remove the first used rule, so that next
+  // will find some new solution
+  this._skip.push(used);
 
-  console.log(this._rules);
+  // this._rules[this._rules.indexOf(used[used.length - 1])].__skip = true;
+  // this._rules.splice(this._rules.indexOf(used[used.length-1]), 1);
 
   return subst;
+};
+
+Array.prototype.equals = function (array) {
+  // if the other array is a falsy value, return
+  if (!array)
+    return false;
+
+  // compare lengths - can save a lot of time
+  if (this.length != array.length)
+    return false;
+
+  for (var i = 0, l=this.length; i < l; i++) {
+    // Check if we have nested arrays
+    if (this[i] instanceof Array && array[i] instanceof Array) {
+      // recurse into the nested arrays
+      if (!this[i].equals(array[i]))
+        return false;
+    }
+    else if (this[i] != array[i]) {
+      // Warning - two different object instances will never be equal: {x:20} != {x:20}
+      return false;
+    }
+  }
+  return true;
+}
+
+Array.prototype.find = function( element ) {
+  var it = false;
+  this.forEach(function( e ) {
+    if( e.equals(element)) { it = true; }
+  });
+
+  return it;
 };
