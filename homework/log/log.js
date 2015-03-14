@@ -17,6 +17,10 @@ Rule.prototype.makeCopyWithFreshVarNames = function() {
   return new Rule(newHead, newBody);
 };
 
+Rule.prototype.toString = function() {
+  return this.head.toString() + (this.body.length? " :- " + this.body.join(", "): "");
+};
+
 Clause.prototype.__freshen = function(env) {
   var newArgs = [];
 
@@ -47,7 +51,6 @@ Var.prototype.__freshen = function(env) {
 };
 
 
-
 Clause.prototype.rewrite = function(subst) {
   var newArgs = [];
 
@@ -73,6 +76,23 @@ Var.prototype.rewrite = function(subst) {
 // Part II: Subst.prototype.unify(term1, term2)
 // -----------------------------------------------------------------------------
 
+function uBind(subst, name, term) {
+  if( subst.lookup(name) && subst.lookup(name).toString() !== term.toString() ){
+    debugger;
+    throw new Error( 'unification failed' );
+  }
+
+  subst.bind(name, term);
+}
+
+Subst.prototype.toString = function(){
+  var str = "";
+  for( var b in this.bindings ) {
+    str += b + ": " + this.bindings[b].toString() + "\n";
+  }
+  return str;
+};
+
 Subst.prototype.unify = function(term1, term2) {
   if( term1.constructor == Var && term2.constructor == Var ){
     if( term1.name !== term2.name ){
@@ -81,11 +101,11 @@ Subst.prototype.unify = function(term1, term2) {
   }
 
   if( term1.constructor == Var && term2.constructor == Clause ){
-    this.bind(term1.name, term2);
+    uBind(this, term1.name, term2);
   }
 
   if( term1.constructor == Clause && term2.constructor == Var ){
-    this.bind(term2.name, term1);
+    uBind(this, term2.name, term1);
   }
 
   if( term1.constructor == Clause && term2.constructor == Clause ){
@@ -96,15 +116,13 @@ Subst.prototype.unify = function(term1, term2) {
     term1.args.forEach(function( clause1, i ) {
       var clause2 = term2.args[i];
 
-      clause1.rewrite(this);
-      clause2.rewrite(this);
-
-      this.unify(clause1, clause2);
+      this.unify(clause1.rewrite(this), clause2.rewrite(this));
     }.bind(this));
   }
 
   // go back and make sure to substitute on the right hand side
   for( var b in this.bindings ){
+    // todo must not substitute x for itself
     this.bindings[b] = this.bindings[b].rewrite(this);
   }
 
@@ -144,32 +162,37 @@ Solution.prototype.next = function( skip ) {
       substClone = subst.clone();
 
       try {
+        var fresh = rule.makeCopyWithFreshVarNames();
         // try to unify, record on success
-        result = substClone.unify(clause, rule.head);
+        console.log( "attempting with:\n", clause.toString()+"\n", fresh.toString()+"\n", substClone.toString() );
+        result = substClone.unify(clause, fresh.head);
+
 
         var path = used.slice();
 
         path.push(rule);
 
         if( skip.find(path) ){
+          console.log( "skipped path: ", path.toString());
           debugger;
           continue;
         }
 
         subst = result;
+        console.log( "succeded with:\n", clause.toString()+"\n", fresh.toString()+"\n", substClone.toString() );
 
-        query = query.concat(rule.body);
+        query = query.concat(fresh.body);
 
         // update everything else with the new binding, this forces
         // any query considered later to respect the bindings found here
-        query = query.map(function( q ) {
-          return q.rewrite(subst);
-        });
+        // query = query.map(function( q ) {
+        //   return q.__freshen({});
+        // });
 
         // if the unification doesn't throw an exception
         success = true;
-
         // store rules used
+        console.log( "rule added: ", rule.toString());
         used.push(rule);
 
         // move on to the next query
@@ -184,7 +207,6 @@ Solution.prototype.next = function( skip ) {
     // the current query and it's the first rule
     // then fail, there are no solutions
     if( ! success && i == 0 ){
-      debugger;
       return false;
     }
 
@@ -196,7 +218,7 @@ Solution.prototype.next = function( skip ) {
         skip.push(used);
       }
 
-      debugger;
+      console.log( "starting over without: ", used.toString() );
       return this.next( skip );
     }
 
@@ -205,6 +227,7 @@ Solution.prototype.next = function( skip ) {
 
   // on success remove the first used rule, so that next
   // will find some new solution
+  console.log("solution", used.toString());
   this._skip.push(used);
 
   // this._rules[this._rules.indexOf(used[used.length - 1])].__skip = true;
@@ -244,4 +267,8 @@ Array.prototype.find = function( element ) {
   });
 
   return it;
+};
+
+Array.prototype.toString = function() {
+  return this.join( "; ");
 };
