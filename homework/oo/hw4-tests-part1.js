@@ -13,7 +13,103 @@ OO.initializeCT();
 
 // Tests for Part I
 
-tests(
+tests(JS,
+  {
+    name: 'object equality',
+    code: 'var foo = OO.instantiate("Object");\n' +
+          'OO.send(foo, "===", foo);',
+    expected: true
+  },
+  {
+    name: 'object equality false',
+    code: 'var foo = OO.instantiate("Object");' +
+          'var bar = OO.instantiate("Object"); window.foo = foo; window.bar = bar;' +
+          'OO.send(foo, "===", bar);',
+    expected: false
+  },
+  {
+    name: 'object inequality false',
+    code: 'var foo = OO.instantiate("Object");\n' +
+          'OO.send(foo, "!==", foo);',
+    expected: false
+  },
+  {
+    name: 'object inequality',
+    code: 'var foo = OO.instantiate("Object");' +
+          'var bar = OO.instantiate("Object");' +
+          'OO.send(foo, "!==", bar);',
+    expected: true
+  },
+  {
+    name: 'object equality',
+    code: 'OO.declareMethod("Object", "add", function(_this, x, y) { return x + y; });\n\n' +
+          'var foo = OO.instantiate("Object");// new Object().add(3, 4)\n' +
+          'OO.send(foo, "===", foo);',
+    expected: true
+  },
+  {
+    name: 'redeclare',
+    code: 'OO.declareClass("Object");',
+    shouldThrow: true
+  },
+  {
+    name: 'declare name',
+    code: 'OO.declareClass("Foo");' +
+          'var foo = OO.instantiate("Foo");' +
+          'foo._class',
+    expected: "Foo"
+  },
+  {
+    name: 'declare parent',
+    code: 'OO.declareClass("Faz", "Object")._parent;',
+    expected: "Object"
+  },
+  {
+    name: 'declare parent undefined',
+    code: 'OO.declareClass("Foo", "Bar");',
+    shouldThrow: true
+  },
+  {
+    name: 'declare parent dup ivars',
+    code: 'OO.declareClass("Fiz", "Object", [ "x", "x" ] );',
+    shouldThrow: true
+  },
+  {
+    name: 'declare parent dup parent ivars',
+    code: 'OO.declareClass("Fizz", "Object", [ "x" ] );' +
+      'OO.declareClass("Fizzed", "Fizz", [ "x" ] );',
+    shouldThrow: true
+  },
+  {
+    name: 'declare parent no duped ivars',
+    code: 'OO.declareClass("FizzGud", "Object", [ "x" ] );' +
+      'OO.declareClass("FizzedGud", "Fizz", [ "y" ] ); "Good"',
+    expected: "Good"
+  },
+  {
+    name: 'instantiate undefined',
+    code: 'OO.instantiate("not defined for sure");',
+    shouldThrow: true
+  },
+  {
+    name: 'override',
+    code: 'OO.declareClass("Over");' +
+      'OO.declareMethod("Over", "===", function(_this, other){ return 10 });' +
+      'OO.send(OO.instantiate("Over"), "===", 3, 4);',
+    expected: 10
+  },
+  {
+    name: 'super send bad class',
+    code: 'OO.superSend("NotDefined", 3, 4);',
+    shouldThrow: true
+  },
+  {
+    name: 'super send works',
+    code: 'OO.declareClass("Super");' +
+      'var sup = OO.instantiate("Super");' +
+      'OO.superSend("Object", sup, "!==", 3);',
+    expected: true
+  },
   {
     name: 'primitive values should allow extension',
     code: 'false',
@@ -36,6 +132,19 @@ tests(
     name: 'set ivar',
     code: 'OO.setInstVar(OO.instantiate("Object"), "foo", 3);',
     shouldThrow: true
+  },
+  {
+    name: 'get ivar fail',
+    code: 'OO.getInstVar(OO.instantiate("Object"), "blaz");',
+    shouldThrow: true
+  },
+  {
+    name: 'get ivar succeed',
+    code: 'OO.declareClass("GetIvar", "Object", ["foo"]);' +
+      'var givar = OO.instantiate("GetIvar");' +
+      'OO.setInstVar(givar, "foo", 3);'+
+      'OO.getInstVar(givar, "foo");',
+    expected: 3
   },
   {
     name: 'normal Point',
@@ -115,28 +224,169 @@ tests(
     name: "walk the hierarchy",
     code: 'OO.declareClass("C", "Object", ["value"]);\n\n' +
       'OO.send(OO.instantiate("C", 5), "!==", 4);',
-    expected: false
+    expected: true
   },
   {
     name: "walk the hierarchy, fail",
-    code: 'OO.declareClass("C", "Object", ["value"]);\n\n' +
-      'OO.send(OO.instantiate("C", 5), "bar", 4);',
+    code: 'OO.declareClass("whf", "Object", ["value"]);\n\n' +
+      'OO.send(OO.instantiate("whf", 5), "bar", 4);',
     shouldThrow: true
   },
   {
     name: 'OK to have a method and an instance variable with the same name',
-    code: '// class C { var value; }\n' +
-          'OO.declareClass("C", "Object", ["value"]);\n\n' +
-          '// def C.initialize(value) { this.value = value; }\n' +
-          'OO.declareMethod("C", "initialize", function(_this, value) {\n' +
+    code: 'OO.declareClass("D", "Object", ["value"]);\n\n' +
+          'OO.declareMethod("D", "initialize", function(_this, value) {\n' +
           '  OO.setInstVar(_this, "value", value);\n' +
           '});\n\n' +
-          '// def C.value() { return this.value * this.value; }\n' +
-          'OO.declareMethod("C", "value", function(_this) {\n' +
+          'OO.declareMethod("D", "value", function(_this) {\n' +
           '  return OO.getInstVar(_this, "value") * OO.getInstVar(_this, "value");\n' +
           '});\n\n' +
-          '// new C(5).value()\n' +
-          'OO.send(OO.instantiate("C", 5), "value");',
+          'OO.send(OO.instantiate("D", 5), "value");',
     expected: 25
+  },
+  {
+    name: 'method declaration and send',
+    code: '// def Object.add(x, y) { return x + y; }\n' +
+      'OO.declareMethod("Object", "add", function(_this, x, y) { return x + y; });\n\n' +
+      '// new Object().add(3, 4)\n' +
+      'OO.send(OO.instantiate("Object"), "add", 3, 4);',
+    expected: 7
+  },
+  /* Basic functionality testing */
+  {
+    name: 'Builtin Object === testing',
+    code: 'var testObjectEq = OO.instantiate("C", 1);\n' +
+      'OO.send(testObjectEq, "===", testObjectEq);',
+    expected: true
+  },
+  {
+    name: 'Builtin Object === testing',
+    code: 'OO.send(OO.instantiate("C", 1), "===", OO.instantiate("C", 1));',
+    expected: false
+  },
+  {
+    name: 'Builtin Object !== testing',
+    code: 'var testObjectEq = OO.instantiate("C", 1);\n' +
+      'OO.send(testObjectEq, "!==", testObjectEq);',
+    expected: false
+  },
+  {
+    name: 'Builtin Object !== testing',
+    code: 'OO.send(OO.instantiate("C", 1), "!==", OO.instantiate("C", 1));',
+    expected: true
+  },
+  {
+    name: 'Can declare a class, instantiate it.',
+    code: 'OO.declareClass("Node", "Object", ["value", "next"]);\n' +
+      'OO.declareMethod("Node", "initialize", function(_this, value, next) {\n' +
+      '     OO.superSend("Object", _this, "initialize");\n' +
+      '     OO.setInstVar(_this, "value", value);\n' +
+      '     OO.setInstVar(_this, "next", next);\n' +
+      '});\n\n' +
+      'var testvarlist = OO.instantiate("Node", 0, null);\n' +
+      '[OO.getInstVar(testvarlist, "value"), OO.getInstVar(testvarlist, "next")];',
+    expected: [0,null]
+  },
+  {
+    name: 'Can add and call a (recursive) method',
+    code: 'OO.declareMethod("Node", "contains", function(_this, value) {\n' +
+      '     if (OO.getInstVar(_this, "value") === value) return true;\n' +
+      '     if (OO.getInstVar(_this, "next") === null) return false;\n' +
+      '     return OO.send(OO.getInstVar(_this,"next"), "contains", value);' +
+      '});\n\n' +
+      'OO.send(OO.instantiate("Node", 0, OO.instantiate("Node", 1, null)),\n' +
+      '     "contains", 1);',
+    expected: true
+  },
+  {
+    name: 'Can create, instantiate, get values of subclasses',
+    code: 'OO.declareClass("DoublyLinked", "Node", ["previous"]);\n' +
+      'OO.declareMethod("DoublyLinked", "initialize",\n' +
+      '  function(_this, value, next, previous) {\n' +
+      '     OO.superSend("Node", _this, "initialize", value, next);\n' +
+      '     OO.setInstVar(_this, "previous", previous);\n' +
+      '});\n\n' +
+      'OO.getInstVar(OO.instantiate("DoublyLinked", 0, null, null), "value");',
+    expected: 0
+  },
+  {
+    name: 'Can access methods of superclasses',
+    code: 'OO.send(OO.instantiate("DoublyLinked", 0, OO.instantiate("DoublyLinked", 1, null, null), null),\n' +
+      '     "contains", 1);',
+    expected: true
+  },
+  {
+    name: 'Can access methods of superclasses using superSend',
+    code: 'OO.superSend("Node", OO.instantiate("DoublyLinked", 0, OO.instantiate("DoublyLinked", 1, null, null), null),\n' +
+      '     "contains", 1);',
+    expected: true
+  },
+  {
+    name: 'Can override methods of same class',
+    code: 'OO.declareMethod("Node", "contains", function() {return 5;});\n' +
+      'OO.send(OO.instantiate("Node", 0, null), "contains");',
+    expected: 5
+  },
+  {
+    name: 'Can override methods of super class',
+    code: 'OO.declareMethod("DoublyLinked", "contains", function() {return 9;});\n' +
+      'OO.send(OO.instantiate("DoublyLinked", 0, null), "contains");',
+    expected: 9
+  },
+  /* Error testing */
+  {
+    name: 'Error to declare a duplicate class',
+    code: 'OO.declareClass("C", "Object", ["value"]);',
+    shouldThrow: true
+  },
+    /*{ // As per the followup down below, the spec doesn't actually require this case.
+    name: 'Error to declare a class without a superclass',
+    code: 'OO.declareClass("Er1", null, ["value"]);',
+    shouldThrow: true
+     }, */
+  {
+    name: 'Error to declare a class with a nonexistant superclass',
+    code: 'OO.declareClass("Er2", "Nonexistant", ["value"]);',
+    shouldThrow: true
+  },
+  {
+    name: 'Error to declare a duplicate variable',
+    code: 'OO.declareClass("Er3", "Object", ["value", "something", "value"]);',
+    shouldThrow: true
+  },
+  {
+    name: 'Error to declare a duplicate variable in subclass',
+    code: 'OO.declareClass("Er4", "C", ["value"]);',
+    shouldThrow: true
+  },
+  {
+    name: 'Error to declare a method on a nonexistant class',
+    code: 'OO.declareMethod("Nonexistant", "foo", function() { return 5; });',
+    shouldThrow: true
+  },
+  {
+    name: 'Error to instantiate a nonexistant class',
+    code: 'OO.instantiate("Nonexistant");',
+    shouldThrow: true
+  },
+  {
+    name: 'Error to set nonexistant instance variable',
+    code: 'OO.setInstVar(OO.instantiate("Object"), "value", 0);',
+    shouldThrow: true
+  },
+  {
+    name: 'Error to get nonexistant instance variable',
+    code: 'OO.getInstVar(OO.instantiate("Object"), "value", 0);',
+    shouldThrow: true
+  },
+  {
+    name: 'Error to call nonexistant method',
+    code: 'OO.send(OO.instantiate("Object"), "toString");',
+    shouldThrow: true
+  },
+  {
+    name: 'Error to call nonexistant method',
+    code: 'OO.superSend("Object", OO.instantiate("C", 1), "toString");',
+    shouldThrow: true
   }
 );

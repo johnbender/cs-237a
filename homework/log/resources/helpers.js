@@ -1,5 +1,9 @@
 function prettyPrintJS(code) {
-  return js_beautify(code);
+  if (typeof code === "string") {
+    return js_beautify(code);
+  } else {
+    throw new Error("expected a string, but got " + code + " instead");
+  }
 } 
 
 function arrayEquals(xs, ys) {
@@ -7,7 +11,7 @@ function arrayEquals(xs, ys) {
     return false;
   } else {
     for (var idx = 0; idx < xs.length; idx++) {
-      if (!(equals(xs[idx], ys[idx]))) {
+      if (!(__equals__(xs[idx], ys[idx]))) {
         return false;
       }
     }
@@ -15,9 +19,11 @@ function arrayEquals(xs, ys) {
   }
 }
 
-function equals(x, y) {
+function __equals__(x, y) {
   return x instanceof Array ? arrayEquals(x, y) : x === y;
 }
+
+var equals = __equals__;
 
 function toDOM(x) {
   if (x instanceof Node) {
