@@ -78,7 +78,6 @@ Var.prototype.rewrite = function(subst) {
 
 function uBind(subst, name, term) {
   if( subst.lookup(name) && subst.lookup(name).toString() !== term.toString() ){
-    debugger;
     throw new Error( 'unification failed' );
   }
 
@@ -164,7 +163,6 @@ Solution.prototype.next = function( skip ) {
       try {
         var fresh = rule.makeCopyWithFreshVarNames();
         // try to unify, record on success
-        console.log( "attempting with:\n", clause.toString()+"\n", fresh.toString()+"\n", substClone.toString() );
         result = substClone.unify(clause, fresh.head);
 
 
@@ -173,13 +171,10 @@ Solution.prototype.next = function( skip ) {
         path.push(rule);
 
         if( skip.find(path) ){
-          console.log( "skipped path: ", path.toString());
-          debugger;
           continue;
         }
 
         subst = result;
-        console.log( "succeded with:\n", clause.toString()+"\n", fresh.toString()+"\n", substClone.toString() );
 
         query = query.concat(fresh.body);
 
@@ -192,7 +187,6 @@ Solution.prototype.next = function( skip ) {
         // if the unification doesn't throw an exception
         success = true;
         // store rules used
-        console.log( "rule added: ", rule.toString());
         used.push(rule);
 
         // move on to the next query
@@ -218,7 +212,6 @@ Solution.prototype.next = function( skip ) {
         skip.push(used);
       }
 
-      console.log( "starting over without: ", used.toString() );
       return this.next( skip );
     }
 
@@ -227,11 +220,7 @@ Solution.prototype.next = function( skip ) {
 
   // on success remove the first used rule, so that next
   // will find some new solution
-  console.log("solution", used.toString());
   this._skip.push(used);
-
-  // this._rules[this._rules.indexOf(used[used.length - 1])].__skip = true;
-  // this._rules.splice(this._rules.indexOf(used[used.length-1]), 1);
 
   return subst;
 };
